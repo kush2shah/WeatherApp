@@ -28,11 +28,37 @@ struct ContentView: View {
                                 selectedSource: Binding(
                                     get: { selectedSource },
                                     set: { viewModel.selectedSource = $0 }
-                                ),
-                                onRefresh: {
-                                    await viewModel.refresh()
-                                }
+                                )
                             )
+                        }
+                    } else if let error = viewModel?.error {
+                        VStack(spacing: 20) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 60))
+                                .foregroundStyle(.yellow)
+
+                            Text("Something went wrong")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.primary)
+
+                            Text(error.localizedDescription)
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal)
+
+                            Button {
+                                Task {
+                                    await viewModel?.refresh()
+                                }
+                            } label: {
+                                Label("Try Again", systemImage: "arrow.clockwise")
+                                    .font(.headline)
+                                    .padding()
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .foregroundStyle(.primary)
                         }
                     } else if viewModel?.isLoading == true {
                         ProgressView("Loading weather...")
@@ -44,6 +70,7 @@ struct ContentView: View {
                             Image(systemName: "cloud.sun.fill")
                                 .symbolRenderingMode(.multicolor)
                                 .font(.system(size: 80))
+                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
 
                             Text("Welcome to WeatherApp")
                                 .font(.title)

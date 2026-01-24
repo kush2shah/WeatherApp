@@ -10,6 +10,7 @@ import SwiftUI
 /// Horizontal scrolling hourly forecast
 struct HourlyForecastCard: View {
     let forecasts: [HourlyForecast]
+    var timezone: TimeZone = .current
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -21,7 +22,7 @@ struct HourlyForecastCard: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     ForEach(forecasts.prefix(24)) { forecast in
-                        HourlyForecastItem(forecast: forecast)
+                        HourlyForecastItem(forecast: forecast, timezone: timezone)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -38,11 +39,12 @@ struct HourlyForecastCard: View {
 /// Individual hourly forecast item
 struct HourlyForecastItem: View {
     let forecast: HourlyForecast
+    let timezone: TimeZone
 
     var body: some View {
         VStack(spacing: 10) {
             // Time
-            Text(forecast.timestamp, format: .dateTime.hour())
+            Text(formattedHour)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -68,6 +70,13 @@ struct HourlyForecastItem: View {
         }
         .frame(width: 65)
         .padding(.vertical, 8)
+    }
+
+    private var formattedHour: String {
+        let formatter = DateFormatter()
+        formatter.timeZone = timezone
+        formatter.setLocalizedDateFormatFromTemplate("j")
+        return formatter.string(from: forecast.timestamp)
     }
 }
 

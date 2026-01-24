@@ -30,17 +30,44 @@ final class WeatherKitService: WeatherServiceProtocol {
             longitude: location.coordinate.longitude
         )
 
-        do {
-            // Fetch current, hourly, and daily weather
-            let (current, hourly, daily) = try await weatherService.weather(
-                for: clLocation,
-                including: .current, .hourly, .daily
-            )
+        // Retry logic for transient auth errors
+        return try await retry(attempts: 3, delay: 1.0) {
+            do {
+                // Fetch current, hourly, and daily weather
+                let (current, hourly, daily) = try await self.weatherService.weather(
+                    for: clLocation,
+                    including: .current, .hourly, .daily
+                )
 
-            return convertToDomainModel(current: current, hourly: hourly, daily: daily, location: location)
-        } catch {
-            throw APIError.networkError(error)
+                return self.convertToDomainModel(current: current, hourly: hourly, daily: daily, location: location)
+            } catch {
+                let nsError = error as NSError
+                if nsError.domain.contains("WeatherDaemon") && nsError.code == 2 {
+                    print("""
+                    ⚠️ WEATHERKIT PROVISIONING ERROR:
+                    The App ID 'com.kushs.WeatherApp' is missing the 'WeatherKit' capability.
+                    Action: Go to developer.apple.com > Identifiers > com.kushs.WeatherApp > Enable WeatherKit > Save.
+                    Then: Xcode > Settings > Accounts > Download Manual Profiles (or clean build folder).
+                    """)
+                }
+                print("[WeatherKit] Attempt failed: \(error)")
+                throw error
+            }
         }
+    }
+
+    private func retry<T>(attempts: Int, delay: Double, operation: @escaping () async throws -> T) async throws -> T {
+        for i in 0..<attempts {
+            do {
+                return try await operation()
+            } catch {
+                if i == attempts - 1 {
+                    throw APIError.networkError(error)
+                }
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+        }
+        fatalError("Unreachable")
     }
 
     // MARK: - Private Helpers
@@ -146,8 +173,8 @@ final class WeatherKitService: WeatherServiceProtocol {
             return .sleet
         case .freezingRain, .freezingDrizzle:
             return .freezingRain
-//        case .fog:
-//            return .fog
+        case .cloudy:
+            return .cloudy
         case .haze:
             return .haze
         case .windy, .breezy:

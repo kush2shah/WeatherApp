@@ -11,7 +11,6 @@ import SwiftUI
 struct WeatherMainView: View {
     let weatherData: WeatherData
     @Binding var selectedSource: WeatherSource
-    let onRefresh: () async -> Void
     @State private var showComparison = false
 
     var body: some View {
@@ -31,41 +30,43 @@ struct WeatherMainView: View {
                 .padding(.top)
 
                 // Source picker
-                if weatherData.availableSources.count > 1 {
-                    Picker("Source", selection: $selectedSource) {
-                        ForEach(weatherData.availableSources, id: \.self) { source in
-                            Text(source.shortName).tag(source)
-                        }
+                Picker("Source", selection: $selectedSource) {
+                    ForEach(weatherData.availableSources, id: \.self) { source in
+                        Text(source.shortName).tag(source)
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .disabled(weatherData.availableSources.count <= 1)
 
                 // Current weather
                 if let weather = weatherData.weather(from: selectedSource) {
                     CurrentWeatherCard(weather: weather.current)
 
                     // Hourly forecast
-                    HourlyForecastCard(forecasts: weather.hourly)
+                    HourlyForecastCard(
+                        forecasts: weather.hourly,
+                        timezone: weatherData.location.timezone
+                    )
 
                     // Daily forecast
                     DailyForecastCard(forecasts: weather.daily)
 
-                    // Comparison button (only show if multiple sources)
-                    if weatherData.availableSources.count > 1 {
-                        Button {
-                            showComparison = true
-                        } label: {
-                            Label("Compare Forecasts", systemImage: "chart.line.uptrend.xyaxis")
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .padding(.horizontal)
+                    // Comparison button
+                    Button {
+                        showComparison = true
+                    } label: {
+                        Label("Compare Forecasts", systemImage: "chart.line.uptrend.xyaxis")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    .padding(.horizontal)
+                    .disabled(weatherData.availableSources.count <= 1)
+                    .opacity(weatherData.availableSources.count <= 1 ? 0.6 : 1)
 
                     // Attribution
                     Text(weather.attribution)
@@ -75,9 +76,6 @@ struct WeatherMainView: View {
                 }
             }
             .padding(.bottom, 20)
-        }
-        .refreshable {
-            await onRefresh()
         }
         .sheet(isPresented: $showComparison) {
             ForecastComparisonView(weatherData: weatherData)

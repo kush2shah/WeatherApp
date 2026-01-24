@@ -39,7 +39,7 @@ actor NOAAWeatherService: WeatherServiceProtocol {
             url: pointsResponse.properties.forecastHourly
         )
 
-        return convertToSourcedWeatherInfo(
+        return try convertToSourcedWeatherInfo(
             forecast: forecastResponse,
             hourly: hourlyResponse,
             location: location
@@ -53,9 +53,11 @@ actor NOAAWeatherService: WeatherServiceProtocol {
         forecast: NOAAForecastResponse,
         hourly: NOAAForecastResponse,
         location: Location
-    ) -> SourcedWeatherInfo {
+    ) throws -> SourcedWeatherInfo {
         // Use first hourly period as current weather
-        let currentPeriod = hourly.properties.periods.first!
+        guard let currentPeriod = hourly.properties.periods.first else {
+            throw APIError.serviceUnavailable
+        }
         let current = convertCurrentWeather(currentPeriod)
 
         // Convert hourly periods
