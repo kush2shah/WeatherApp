@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__list_dir",
+      "WebSearch",
+      "WebFetch(domain:www.appcoda.com)",
+      "WebFetch(domain:www.polpiella.dev)",
+      "mcp__serena__check_onboarding_performed",
+      "mcp__xcodebuildmcp__list_schemes"
+    ]
+  }
+}
