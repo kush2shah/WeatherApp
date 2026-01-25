@@ -14,53 +14,45 @@ struct ComparisonChartView: View {
     let metric: ComparisonMetric
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(metric.rawValue)
-                .font(.headline)
-                .foregroundStyle(.primary)
+        ScrollView(.horizontal, showsIndicators: false) {
+            Chart {
+                ForEach(Array(chartData.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
+                    ForEach(chartData[source] ?? []) { point in
+                        LineMark(
+                            x: .value("Time", point.timestamp),
+                            y: .value(metric.rawValue, point.value)
+                        )
+                        .foregroundStyle(by: .value("Source", source.shortName))
+                        .lineStyle(StrokeStyle(lineWidth: 2.5))
+                        .interpolationMethod(.catmullRom)
 
-            ScrollView(.horizontal, showsIndicators: true) {
-                Chart {
-                    ForEach(Array(chartData.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
-                        ForEach(chartData[source] ?? []) { point in
-                            LineMark(
-                                x: .value("Time", point.timestamp),
-                                y: .value(metric.rawValue, point.value)
-                            )
-                            .foregroundStyle(by: .value("Source", source.shortName))
-                            .lineStyle(StrokeStyle(lineWidth: 2.5))
-                            .interpolationMethod(.catmullRom)
-
-                            // Add point markers for clarity
-                            PointMark(
-                                x: .value("Time", point.timestamp),
-                                y: .value(metric.rawValue, point.value)
-                            )
-                            .foregroundStyle(by: .value("Source", source.shortName))
-                            .symbol(by: .value("Source", source.shortName))
-                        }
+                        // Add point markers for clarity
+                        PointMark(
+                            x: .value("Time", point.timestamp),
+                            y: .value(metric.rawValue, point.value)
+                        )
+                        .foregroundStyle(by: .value("Source", source.shortName))
+                        .symbol(by: .value("Source", source.shortName))
                     }
                 }
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .hour, count: 2)) { value in
-                        AxisGridLine()
-                        AxisTick()
-                        AxisValueLabel(format: .dateTime.hour().minute(), centered: false)
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks { value in
-                        AxisGridLine()
-                        AxisValueLabel()
-                    }
-                }
-                .chartYAxisLabel(metric.unit, position: .trailing)
-                .chartLegend(position: .bottom, spacing: 12)
-                .frame(width: max(800, CGFloat(maxDataPoints) * 40), height: 300)
-                .padding()
             }
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .hour, count: 3)) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    AxisValueLabel(format: .dateTime.hour(), centered: false)
+                }
+            }
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisGridLine()
+                    AxisValueLabel()
+                }
+            }
+            .chartYAxisLabel(metric.unit, position: .trailing)
+            .chartLegend(position: .bottom, spacing: 12)
+            .frame(width: max(350, CGFloat(maxDataPoints) * 35), height: 250) // More compact height
+            .padding(.vertical, 8)
         }
     }
 

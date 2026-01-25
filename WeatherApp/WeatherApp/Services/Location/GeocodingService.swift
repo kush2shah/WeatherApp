@@ -47,7 +47,8 @@ actor GeocodingService: GeocodingServiceProtocol {
 
     /// Reverse geocode coordinates to a location
     func reverseGeocode(coordinate: Coordinate) async throws -> Location {
-        guard coordinate.isValid else {
+        guard coordinate.latitude >= -90 && coordinate.latitude <= 90 &&
+              coordinate.longitude >= -180 && coordinate.longitude <= 180 else {
             throw GeocodingError.invalidCoordinate
         }
 

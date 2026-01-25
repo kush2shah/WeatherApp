@@ -17,8 +17,12 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
         self.apiKey = apiKey
     }
 
-    var isAvailable: Bool {
-        !apiKey.isEmpty
+    nonisolated var isAvailable: Bool {
+        !Config.openWeatherMapAPIKey.isEmpty
+    }
+
+    nonisolated func checkAvailability(for location: Location) -> Bool {
+        isAvailable
     }
 
     func fetchWeather(for location: Location) async throws -> SourcedWeatherInfo {

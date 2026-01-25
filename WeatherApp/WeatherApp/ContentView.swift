@@ -16,7 +16,9 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             // Gradient background
-            GradientBackgroundView()
+            GradientBackgroundView(
+                condition: viewModel?.weatherData?.weather(from: viewModel?.selectedSource ?? .openWeatherMap)?.current.condition ?? .clear
+            )
 
             // Content
             NavigationStack {

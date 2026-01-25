@@ -7,39 +7,44 @@
 
 import SwiftUI
 
-/// Animated gradient background that adapts to color scheme
+/// Animated gradient background that adapts to weather condition and color scheme
 struct GradientBackgroundView: View {
+    let condition: WeatherCondition
     @Environment(\.colorScheme) var colorScheme
     @State private var animationPhase: CGFloat = 0
+    @State private var startPoint = UnitPoint.topLeading
+    @State private var endPoint = UnitPoint.bottomTrailing
 
     var body: some View {
-        LinearGradient(
-            colors: gradientColors,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .hueRotation(.degrees(animationPhase))
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.linear(duration: 10).repeatForever(autoreverses: true)) {
-                animationPhase = 30
+        ZStack {
+            // Base layer to prevent flicker during transitions
+            Color(gradientColors.first ?? .blue)
+                .ignoresSafeArea()
+
+            LinearGradient(
+                colors: gradientColors,
+                startPoint: startPoint,
+                endPoint: endPoint
+            )
+            .hueRotation(.degrees(animationPhase))
+            .ignoresSafeArea()
+            .blur(radius: 20) // Soften the gradient
+            .animation(.easeInOut(duration: 1.0), value: condition)
+            .onAppear {
+                withAnimation(.linear(duration: 15).repeatForever(autoreverses: true)) {
+                    animationPhase = 10
+                    startPoint = .top
+                    endPoint = .bottom
+                }
             }
         }
     }
 
     private var gradientColors: [Color] {
-        colorScheme == .dark
-            ? [
-                Color(red: 0.1, green: 0.1, blue: 0.2),
-                Color(red: 0.2, green: 0.1, blue: 0.3)
-            ]
-            : [
-                Color(red: 0.4, green: 0.7, blue: 1.0),
-                Color(red: 0.6, green: 0.85, blue: 1.0)
-            ]
+        Color.adaptiveWeatherBackground(for: condition, colorScheme: colorScheme)
     }
 }
 
 #Preview {
-    GradientBackgroundView()
+    GradientBackgroundView(condition: .clear)
 }

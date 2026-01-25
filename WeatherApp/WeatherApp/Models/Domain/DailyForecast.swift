@@ -8,7 +8,7 @@
 import Foundation
 
 /// Daily weather forecast
-struct DailyForecast: Identifiable, Codable, Hashable {
+struct DailyForecast: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     let date: Date
     let highTemperature: Double // Celsius

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Unified weather condition representation with SF Symbol mappings
-enum WeatherCondition: String, Codable, CaseIterable {
+enum WeatherCondition: String, Codable, CaseIterable, Sendable {
     case clear
     case partlyCloudy
     case cloudy

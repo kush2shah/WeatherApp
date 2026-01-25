@@ -15,12 +15,12 @@ final class WeatherKitService: WeatherServiceProtocol {
     let source: WeatherSource = .weatherKit
     private let weatherService = WeatherService.shared
 
-    var isAvailable: Bool {
+    nonisolated var isAvailable: Bool {
         // WeatherKit is available worldwide
         true
     }
 
-    func checkAvailability(for location: Location) -> Bool {
+    nonisolated func checkAvailability(for location: Location) -> Bool {
         isAvailable
     }
 
@@ -198,6 +198,14 @@ final class WeatherKitService: WeatherServiceProtocol {
             return .smoke
         case .blowingDust:
             return .dust
+        case .foggy:
+            return .fog
+        case .isolatedThunderstorms, .scatteredThunderstorms:
+            return .thunderstorm
+        case .sunFlurries:
+            return .lightSnow
+        case .sunShowers:
+            return .drizzle
         @unknown default:
             return .unknown
         }

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Hourly weather forecast
-struct HourlyForecast: Identifiable, Codable, Hashable {
+struct HourlyForecast: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     let timestamp: Date
     let temperature: Double // Celsius

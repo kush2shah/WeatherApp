@@ -8,7 +8,7 @@
 import Foundation
 
 /// Unified weather data from multiple sources
-struct WeatherData: Identifiable, Codable {
+struct WeatherData: Identifiable, Codable, Sendable {
     let id: UUID
     let location: Location
     let sources: [WeatherSource: SourcedWeatherInfo]
@@ -46,7 +46,7 @@ struct WeatherData: Identifiable, Codable {
 }
 
 /// Weather information from a specific source
-struct SourcedWeatherInfo: Codable, Hashable {
+struct SourcedWeatherInfo: Codable, Hashable, Sendable {
     let source: WeatherSource
     let current: CurrentWeather
     let hourly: [HourlyForecast]

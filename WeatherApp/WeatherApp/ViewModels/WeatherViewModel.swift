@@ -20,12 +20,15 @@ final class WeatherViewModel {
 
     private let weatherAggregator: WeatherAggregator
     private let modelContext: ModelContext
+    private let geocodingService: GeocodingServiceProtocol
 
     init(
         weatherAggregator: WeatherAggregator? = nil,
+        geocodingService: GeocodingServiceProtocol? = nil,
         modelContext: ModelContext
     ) {
         self.weatherAggregator = weatherAggregator ?? WeatherAggregator()
+        self.geocodingService = geocodingService ?? GeocodingService()
         self.modelContext = modelContext
     }
 
@@ -34,28 +37,50 @@ final class WeatherViewModel {
         isLoading = true
         error = nil
 
-        do {
-            let sources = await weatherAggregator.fetchAllAvailableWeather(for: location)
+        var sources = await weatherAggregator.fetchAllAvailableWeather(for: location)
 
-            guard !sources.isEmpty else {
-                error = APIError.serviceUnavailable
-                isLoading = false
-                return
+        // If fetch failed and we have a locality, try generalizing
+        if sources.isEmpty, let city = location.locality {
+            print("Initial fetch failed for \(location.name). Attempting to generalize to \(city)...")
+            do {
+                let generalizedLocation = try await geocodingService.geocode(address: city)
+                sources = await weatherAggregator.fetchAllAvailableWeather(for: generalizedLocation)
+                
+                if !sources.isEmpty {
+                    print("Generalized fetch succeeded for \(city)")
+                    
+                    let data = WeatherData(
+                        location: generalizedLocation,
+                        sources: sources
+                    )
+                    
+                    weatherData = data
+                    selectedSource = data.primarySource
+                    saveLocation(generalizedLocation)
+                    isLoading = false
+                    return
+                }
+            } catch {
+                print("Failed to generalize location: \(error)")
             }
-
-            let data = WeatherData(
-                location: location,
-                sources: sources
-            )
-
-            weatherData = data
-            selectedSource = data.primarySource
-
-            // Save location
-            saveLocation(location)
-        } catch {
-            self.error = error
         }
+
+        guard !sources.isEmpty else {
+            error = APIError.serviceUnavailable
+            isLoading = false
+            return
+        }
+
+        let data = WeatherData(
+            location: location,
+            sources: sources
+        )
+
+        weatherData = data
+        selectedSource = data.primarySource
+
+        // Save location
+        saveLocation(location)
 
         isLoading = false
     }

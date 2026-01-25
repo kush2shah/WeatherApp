@@ -8,7 +8,7 @@
 import Foundation
 
 /// Current weather conditions
-struct CurrentWeather: Codable, Hashable {
+struct CurrentWeather: Codable, Hashable, Sendable {
     let temperature: Double // Celsius
     let apparentTemperature: Double // Feels like, Celsius
     let condition: WeatherCondition

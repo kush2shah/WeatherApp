@@ -12,29 +12,37 @@ struct DailyForecastCard: View {
     let forecasts: [DailyForecast]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("10-Day Forecast")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
+        VStack(alignment: .leading, spacing: 16) {
+            Label("\(min(10, forecasts.count))-Day Forecast", systemImage: "calendar")
+                .font(.system(.subheadline, design: .rounded))
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 24)
 
             VStack(spacing: 0) {
+                let minTemp = forecasts.map { $0.lowTemperature }.min() ?? 0
+                let maxTemp = forecasts.map { $0.highTemperature }.max() ?? 100
+                
                 ForEach(Array(forecasts.prefix(10).enumerated()), id: \.element.id) { index, forecast in
-                    DailyForecastRow(forecast: forecast)
-
+                    DailyForecastRow(
+                        forecast: forecast,
+                        minTemp: minTemp,
+                        maxTemp: maxTemp
+                    )
+                    
                     if index < min(9, forecasts.count - 1) {
                         Divider()
-                            .foregroundStyle(.primary.opacity(0.2))
-                            .padding(.leading, 70)
+                            .padding(.leading, 24)
+                            .opacity(0.3)
                     }
                 }
             }
-            .padding(.bottom, 16)
         }
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .padding(.vertical, 20)
+        .background(
+            Material.ultraThinMaterial,
+            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+        )
         .padding(.horizontal)
     }
 }
@@ -42,93 +50,118 @@ struct DailyForecastCard: View {
 /// Individual daily forecast row
 struct DailyForecastRow: View {
     let forecast: DailyForecast
+    let minTemp: Double
+    let maxTemp: Double
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack {
             // Day
-            Text(isToday ? "Today" : forecast.shortDayName)
-                .font(.body)
+            Text(dayName)
+                .font(.system(.body, design: .rounded))
+                .fontWeight(.medium)
                 .foregroundStyle(.primary)
-                .frame(width: 50, alignment: .leading)
+                .frame(width: 60, alignment: .leading)
 
             // Icon
-            WeatherIconView(condition: forecast.condition, size: 28)
-                .frame(width: 40)
-
-            // Precipitation
-            if forecast.precipitationPercentage > 0 {
-                HStack(spacing: 2) {
-                    Image(systemName: "drop.fill")
-                        .font(.caption)
+            VStack {
+                WeatherIconView(condition: forecast.condition, size: 24)
+                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                if forecast.precipitationPercentage > 20 {
                     Text("\(forecast.precipitationPercentage)%")
-                        .font(.caption)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.blue)
                 }
-                .foregroundStyle(.blue)
-                .frame(width: 50)
-            } else {
-                Spacer()
-                    .frame(width: 50)
             }
+            .frame(width: 40)
 
             Spacer()
+            
+            // Low Temp
+            Text(verbatim: forecast.lowTemperature.temperatureString(unit: .fahrenheit))
+                .font(.system(.callout, design: .rounded))
+                .foregroundStyle(.secondary)
+                .frame(width: 40, alignment: .trailing)
 
-            // Temperature range
-            HStack(spacing: 8) {
-                Text(verbatim: forecast.lowTemperature.temperatureString(unit: .fahrenheit))
-                    .foregroundStyle(.tertiary)
+            // Bar
+            TemperatureBar(
+                low: forecast.lowTemperature,
+                high: forecast.highTemperature,
+                minRange: minTemp,
+                maxRange: maxTemp
+            )
+            .frame(height: 5)
+            .frame(maxWidth: 100)
 
-                // Temperature bar
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(.primary.opacity(0.2))
-
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .orange],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: geo.size.width * temperatureRatio)
-                    }
-                }
-                .frame(width: 60, height: 4)
-
-                Text(verbatim: forecast.highTemperature.temperatureString(unit: .fahrenheit))
-                    .foregroundStyle(.primary)
-                    .fontWeight(.semibold)
-            }
+            // High Temp
+            Text(verbatim: forecast.highTemperature.temperatureString(unit: .fahrenheit))
+                .font(.system(.callout, design: .rounded))
+                .foregroundStyle(.primary)
+                .frame(width: 40, alignment: .leading)
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
         .padding(.vertical, 12)
     }
 
-    private var isToday: Bool {
-        Calendar.current.isDateInToday(forecast.date)
+    private var dayName: String {
+        if Calendar.current.isDateInToday(forecast.date) {
+            return "Today"
+        }
+        return forecast.shortDayName
     }
+}
 
-    private var temperatureRatio: CGFloat {
-        // Simple ratio for visual effect
-        let range = forecast.highTemperatureFahrenheit - forecast.lowTemperatureFahrenheit
-        return min(max(range / 30, 0.3), 1.0)
+struct TemperatureBar: View {
+    let low: Double
+    let high: Double
+    let minRange: Double
+    let maxRange: Double
+    
+    var body: some View {
+        GeometryReader {
+            geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.primary.opacity(0.1))
+                
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue, .orange],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: width(in: geo.size.width), height: geo.size.height)
+                    .offset(x: offset(in: geo.size.width))
+            }
+        }
+    }
+    
+    func width(in totalWidth: CGFloat) -> CGFloat {
+        let range = high - low
+        let totalRange = max(maxRange - minRange, 1) // Prevent division by zero
+        return totalWidth * CGFloat(range / totalRange)
+    }
+    
+    func offset(in totalWidth: CGFloat) -> CGFloat {
+        let offset = low - minRange
+        let totalRange = max(maxRange - minRange, 1) // Prevent division by zero
+        return totalWidth * CGFloat(offset / totalRange)
     }
 }
 
 #Preview {
     ZStack {
-        GradientBackgroundView()
-
+        Color.gray
         DailyForecastCard(
-            forecasts: (0..<7).map { day in
+            forecasts: (0..<5).map { _ in
                 DailyForecast(
-                    date: Calendar.current.date(byAdding: .day, value: day, to: Date())!,
-                    highTemperature: Double(20 + day),
-                    lowTemperature: Double(10 + day),
+                    date: Date(),
+                    highTemperature: 75,
+                    lowTemperature: 60,
                     condition: .partlyCloudy,
                     conditionDescription: "Partly Cloudy",
-                    precipitationChance: Double(day) * 0.1
+                    precipitationChance: 0.1
                 )
             }
         )

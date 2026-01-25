@@ -9,7 +9,7 @@ import Foundation
 import CoreLocation
 
 /// Represents a geographic location with coordinates and metadata
-struct Location: Identifiable, Codable, Hashable {
+struct Location: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     let name: String
     let coordinate: Coordinate
@@ -68,7 +68,7 @@ struct Location: Identifiable, Codable, Hashable {
 }
 
 /// Codable coordinate representation
-struct Coordinate: Codable, Hashable {
+struct Coordinate: Codable, Hashable, Sendable {
     let latitude: Double
     let longitude: Double
 

@@ -35,7 +35,7 @@ struct LoadingStateView: View {
 
 #Preview {
     ZStack {
-        GradientBackgroundView()
+        GradientBackgroundView(condition: .partlyCloudy)
         LoadingStateView()
     }
 }

@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Main forecast comparison view
+/// Main forecast comparison view using system patterns
 struct ForecastComparisonView: View {
     let weatherData: WeatherData
     @State private var viewModel = ComparisonViewModel()
@@ -15,140 +15,196 @@ struct ForecastComparisonView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Background
-                GradientBackgroundView()
-
-                // Content
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Metric picker
-                        Picker("Metric", selection: $viewModel.selectedMetric) {
-                            ForEach(ComparisonMetric.allCases) { metric in
-                                Text(metric.rawValue).tag(metric)
+            List {
+                if let comparisonData = viewModel.comparisonData {
+                    // Chart Section
+                    Section {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Picker("Metric", selection: $viewModel.selectedMetric) {
+                                ForEach(ComparisonMetric.allCases) { metric in
+                                    Text(metric.rawValue).tag(metric)
+                                }
                             }
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        .padding(.top)
-
-                        // Chart
-                        if let comparisonData = viewModel.comparisonData {
+                            .pickerStyle(.segmented)
+                            
                             ComparisonChartView(
                                 data: comparisonData,
                                 metric: viewModel.selectedMetric
                             )
-                            .padding(.horizontal)
+                        }
+                        .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16))
+                    } header: {
+                        Text("Forecast Trends")
+                    }
 
-                            // Difference highlights
-                            DifferenceHighlightView(comparisonData: comparisonData)
-                                .padding(.horizontal)
+                    // Key Differences Section
+                    Section {
+                        DifferenceRow(
+                            icon: "thermometer.medium",
+                            title: "Temperature Variance",
+                            value: String(format: "%.1f°", comparisonData.temperatureVariance),
+                            description: "Max spread between sources",
+                            severity: temperatureSeverity(for: comparisonData)
+                        )
 
-                            // Source details
-                            SourceDetailsView(weatherData: weatherData)
+                        if comparisonData.precipitationDifference > 0 {
+                            DifferenceRow(
+                                icon: "cloud.rain.fill",
+                                title: "Precipitation Disagreement",
+                                value: String(format: "%.0f%%", comparisonData.precipitationDifference),
+                                description: "Difference in rain chance",
+                                severity: precipitationSeverity(for: comparisonData)
+                            )
+                        }
+
+                        if comparisonData.windVariance > 0 {
+                            DifferenceRow(
+                                icon: "wind",
+                                title: "Wind Speed Variance",
+                                value: String(format: "%.1f mph", comparisonData.windVariance),
+                                description: "Difference in wind speed",
+                                severity: windSeverity(for: comparisonData)
+                            )
+                        }
+                    } header: {
+                        Text("Key Differences")
+                    } footer: {
+                        Text("Variance indicates how much the weather sources disagree.")
+                    }
+
+                    // Sources Section
+                    Section("Source Details") {
+                        ForEach(Array(weatherData.sources.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
+                            if let weather = weatherData.sources[source] {
+                                SourceDetailRow(source: source, weather: weather)
+                            }
                         }
                     }
-                    .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("Forecast Comparison")
+            .listStyle(.insetGrouped)
+            .navigationTitle("Compare")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundStyle(.primary)
+                    .fontWeight(.semibold)
                 }
             }
-            .toolbarBackground(.hidden, for: .navigationBar)
             .onAppear {
                 viewModel.analyzeWeatherData(weatherData)
             }
         }
     }
-}
+    
+    // MARK: - Severity Helpers
+    
+    private func temperatureSeverity(for data: ComparisonData) -> DifferenceSeverity {
+        if data.temperatureVariance < 5 { return .low }
+        else if data.temperatureVariance < 10 { return .medium }
+        else { return .high }
+    }
 
-/// Source details section
-struct SourceDetailsView: View {
-    let weatherData: WeatherData
+    private func precipitationSeverity(for data: ComparisonData) -> DifferenceSeverity {
+        if data.precipitationDifference < 20 { return .low }
+        else if data.precipitationDifference < 40 { return .medium }
+        else { return .high }
+    }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Data Sources")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .padding(.horizontal)
-
-            VStack(spacing: 12) {
-                ForEach(Array(weatherData.sources.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
-                    if let weather = weatherData.sources[source] {
-                        SourceDetailCard(source: source, weather: weather)
-                    }
-                }
-            }
-            .padding(.horizontal)
-        }
+    private func windSeverity(for data: ComparisonData) -> DifferenceSeverity {
+        if data.windVariance < 5 { return .low }
+        else if data.windVariance < 15 { return .medium }
+        else { return .high }
     }
 }
 
-/// Individual source detail card
-struct SourceDetailCard: View {
+/// Standard list row for highlighting differences
+struct DifferenceRow: View {
+    let icon: String
+    let title: String
+    let value: String
+    let description: String
+    let severity: DifferenceSeverity
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(severity.color)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(value)
+                .font(.callout)
+                .fontWeight(.bold)
+                .foregroundStyle(severity.color)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(severity.color.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/// Standard list row for source details
+struct SourceDetailRow: View {
     let source: WeatherSource
     let weather: SourcedWeatherInfo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(source.displayName)
                     .font(.headline)
-                    .foregroundStyle(.primary)
-
                 Spacer()
-
                 Text(verbatim: weather.current.temperature.temperatureString(unit: .fahrenheit))
-                    .font(.title2)
+                    .font(.headline)
                     .fontWeight(.bold)
-                    .foregroundStyle(.primary)
             }
-
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Condition")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Text(weather.current.conditionDescription)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                }
-
+            
+            HStack(spacing: 12) {
+                Label(weather.current.conditionDescription, systemImage: weather.current.condition.sfSymbolName)
                 Spacer()
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Humidity")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Text("\(weather.current.humidityPercentage)%")
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                }
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Wind")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Text("\(Int(weather.current.windSpeedMph)) mph")
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                }
+                Label("\(Int(weather.current.humidityPercentage))%", systemImage: "humidity")
+                Label("\(Int(weather.current.windSpeedMph)) mph", systemImage: "wind")
             }
-
-            Text(weather.attribution)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .symbolRenderingMode(.hierarchical)
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 4)
+    }
+}
+
+/// Severity level for differences
+enum DifferenceSeverity {
+    case low
+    case medium
+    case high
+
+    var color: Color {
+        switch self {
+        case .low:
+            return .green
+        case .medium:
+            return .yellow
+        case .high:
+            return .red
+        }
     }
 }

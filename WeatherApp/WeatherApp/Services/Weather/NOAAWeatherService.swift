@@ -12,9 +12,9 @@ actor NOAAWeatherService: WeatherServiceProtocol {
     let source: WeatherSource = .noaa
     private let networkClient = NetworkClient()
 
-    var isAvailable: Bool { true }
+    nonisolated var isAvailable: Bool { true }
 
-    func checkAvailability(for location: Location) -> Bool {
+    nonisolated func checkAvailability(for location: Location) -> Bool {
         // NOAA only covers US territories
         location.country == "US" ||
         location.country == "United States" ||

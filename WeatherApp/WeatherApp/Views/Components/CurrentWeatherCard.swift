@@ -12,127 +12,111 @@ struct CurrentWeatherCard: View {
     let weather: CurrentWeather
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Weather icon
-            WeatherIconView(condition: weather.condition, size: 80)
+        VStack(spacing: 0) {
+            // Main Info
+            VStack(spacing: 4) {
+                WeatherIconView(condition: weather.condition, size: 80)
+                    .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2) // Added contrast shadow
+                    .padding(.bottom, 8)
 
-            // Temperature
-            Text(verbatim: weather.temperature.temperatureString(unit: .fahrenheit))
-                .font(.system(size: 72, weight: .thin))
-                .foregroundStyle(.primary)
+                Text(verbatim: weather.temperature.temperatureString(unit: .fahrenheit))
+                    .font(.system(size: 96, weight: .thin, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1) // Subtle text shadow
+                    .tracking(-2)
 
-            // Condition
-            Text(weather.conditionDescription)
-                .font(.title3)
-                .foregroundStyle(.secondary)
-
-            // Feels like
-            Text(verbatim: "Feels like \(weather.apparentTemperature.temperatureString(unit: .fahrenheit))")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Divider()
-                .foregroundStyle(.primary.opacity(0.2))
-                .padding(.vertical, 8)
-
-            // Details grid
-            LazyVGrid(
-                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                spacing: 20
-            ) {
-                WeatherDetailItem(
-                    icon: "humidity.fill",
-                    label: "Humidity",
-                    value: "\(weather.humidityPercentage)%"
-                )
-
-                WeatherDetailItem(
-                    icon: "wind",
-                    label: "Wind",
-                    value: "\(Int(weather.windSpeedMph)) mph \(weather.windDirectionCardinal ?? "")"
-                )
-
-                WeatherDetailItem(
-                    icon: "barometer",
-                    label: "Pressure",
-                    value: "\(Int(weather.pressure)) hPa"
-                )
-
-                if let uvIndex = weather.uvIndex {
-                    WeatherDetailItem(
-                        icon: "sun.max.fill",
-                        label: "UV Index",
-                        value: "\(Int(uvIndex))"
-                    )
-                }
-
-                if let visibility = weather.visibility {
-                    WeatherDetailItem(
-                        icon: "eye.fill",
-                        label: "Visibility",
-                        value: "\(Int(visibility / 1000)) km"
-                    )
-                }
-
-                if let cloudCover = weather.cloudCoverPercentage {
-                    WeatherDetailItem(
-                        icon: "cloud.fill",
-                        label: "Cloud Cover",
-                        value: "\(cloudCover)%"
-                    )
-                }
+                Text(weather.conditionDescription)
+                    .font(.title3)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                    // Secondary text might need contrast help too, depending on background
             }
+            .padding(.vertical, 30)
+
+            // Scrollable Detail Row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    DetailItem(label: "Wind", value: "\(Int(weather.windSpeedMph)) mph", icon: "wind")
+                    
+                    Divider().frame(height: 30).padding(.horizontal, 16)
+                    
+                    DetailItem(label: "Humidity", value: "\(weather.humidityPercentage)%", icon: "humidity")
+
+                    Divider().frame(height: 30).padding(.horizontal, 16)
+
+                    if let uv = weather.uvIndex {
+                        DetailItem(label: "UV Index", value: "\(Int(uv))", icon: "sun.max")
+                        Divider().frame(height: 30).padding(.horizontal, 16)
+                    }
+                    
+                    DetailItem(label: "Pressure", value: "\(Int(weather.pressure))", icon: "barometer")
+                    
+                    if let visibility = weather.visibility {
+                        Divider().frame(height: 30).padding(.horizontal, 16)
+                        DetailItem(label: "Vis", value: "\(Int(visibility / 1000)) km", icon: "eye")
+                    }
+                    
+                    if let cloud = weather.cloudCoverPercentage {
+                        Divider().frame(height: 30).padding(.horizontal, 16)
+                        DetailItem(label: "Clouds", value: "\(cloud)%", icon: "cloud")
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+            }
+            .background(
+                Material.ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+            )
+            .padding(.horizontal, 20)
         }
-        .padding(24)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-        .padding(.horizontal)
     }
 }
 
-/// Individual weather detail item
-struct WeatherDetailItem: View {
-    let icon: String
+private struct DetailItem: View {
     let label: String
     let value: String
+    let icon: String
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(.system(size: 18))
                 .foregroundStyle(.secondary)
-
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-
-            Text(value)
-                .font(.headline)
-                .foregroundStyle(.primary)
+            
+            VStack(spacing: 2) {
+                Text(value)
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .fixedSize() // Prevent truncation
+                
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fontWeight(.medium)
+            }
         }
-        .frame(maxWidth: .infinity)
+        .frame(minWidth: 60)
     }
 }
 
 #Preview {
     ZStack {
-        GradientBackgroundView()
-
+        Color.blue
         CurrentWeatherCard(
             weather: CurrentWeather(
-                temperature: 20,
-                apparentTemperature: 18,
+                temperature: 72,
+                apparentTemperature: 70,
                 condition: .partlyCloudy,
                 conditionDescription: "Partly Cloudy",
-                humidity: 0.65,
-                pressure: 1013,
-                windSpeed: 5.5,
+                humidity: 0.45,
+                pressure: 1012,
+                windSpeed: 8,
                 windDirection: 180,
-                uvIndex: 3,
+                uvIndex: 5,
                 visibility: 10000,
-                cloudCover: 0.4,
-                dewPoint: 12,
+                cloudCover: 0.2,
+                dewPoint: 60,
                 timestamp: Date()
             )
         )
