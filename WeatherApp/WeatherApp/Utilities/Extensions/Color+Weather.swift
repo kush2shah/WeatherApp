@@ -23,30 +23,45 @@ extension Color {
         switch condition {
         case .clear:
             return [
-                Color(red: 0.4, green: 0.7, blue: 1.0),
-                Color(red: 0.6, green: 0.85, blue: 1.0)
+                Color(red: 0.2, green: 0.6, blue: 0.9),
+                Color(red: 0.4, green: 0.8, blue: 1.0)
             ]
-        case .partlyCloudy, .cloudy:
+        case .partlyCloudy:
             return [
-                Color(red: 0.5, green: 0.6, blue: 0.7),
-                Color(red: 0.6, green: 0.7, blue: 0.8)
+                Color(red: 0.4, green: 0.6, blue: 0.8),
+                Color(red: 0.6, green: 0.8, blue: 0.9)
             ]
-        case .rain, .drizzle, .heavyRain:
+        case .cloudy, .overcast:
             return [
-                Color(red: 0.3, green: 0.4, blue: 0.6),
-                Color(red: 0.4, green: 0.5, blue: 0.7)
+                Color(red: 0.5, green: 0.55, blue: 0.6),
+                Color(red: 0.6, green: 0.65, blue: 0.7)
             ]
-        case .thunderstorm:
+        case .rain, .drizzle, .heavyRain, .freezingRain:
             return [
-                Color(red: 0.2, green: 0.2, blue: 0.3),
-                Color(red: 0.3, green: 0.3, blue: 0.4)
+                Color(red: 0.25, green: 0.3, blue: 0.4),
+                Color(red: 0.35, green: 0.4, blue: 0.5)
             ]
-        case .snow, .lightSnow, .heavySnow:
+        case .thunderstorm, .tropical, .hurricane, .tornado:
             return [
-                Color(red: 0.7, green: 0.8, blue: 0.9),
-                Color(red: 0.8, green: 0.9, blue: 1.0)
+                Color(red: 0.15, green: 0.15, blue: 0.25),
+                Color(red: 0.25, green: 0.25, blue: 0.35)
             ]
-        default:
+        case .snow, .lightSnow, .heavySnow, .sleet:
+            return [
+                Color(red: 0.65, green: 0.75, blue: 0.85),
+                Color(red: 0.85, green: 0.9, blue: 0.95)
+            ]
+        case .fog, .haze, .dust, .smoke:
+            return [
+                Color(red: 0.6, green: 0.6, blue: 0.65),
+                Color(red: 0.7, green: 0.7, blue: 0.75)
+            ]
+        case .wind:
+             return [
+                 Color(red: 0.4, green: 0.7, blue: 0.7),
+                 Color(red: 0.5, green: 0.8, blue: 0.8)
+             ]
+        case .unknown:
             return [
                 Color(red: 0.4, green: 0.7, blue: 1.0),
                 Color(red: 0.6, green: 0.85, blue: 1.0)
