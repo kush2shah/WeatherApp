@@ -22,10 +22,15 @@ final class ComparisonViewModel {
         var wind: [WeatherSource: [DataPoint]] = [:]
         var humidity: [WeatherSource: [DataPoint]] = [:]
 
+        let now = Date()
+
         // Extract data from each source
         for (source, weather) in weatherData.sources {
+            // Filter to future hours first, then take 24
+            let futureHourly = weather.hourly.filter { $0.timestamp >= now }.prefix(24)
+
             // Temperature data points
-            temperatures[source] = weather.hourly.prefix(24).map { forecast in
+            temperatures[source] = futureHourly.map { forecast in
                 DataPoint(
                     timestamp: forecast.timestamp,
                     value: forecast.temperatureFahrenheit,
@@ -34,7 +39,7 @@ final class ComparisonViewModel {
             }
 
             // Precipitation data points
-            precipitation[source] = weather.hourly.prefix(24).map { forecast in
+            precipitation[source] = futureHourly.map { forecast in
                 DataPoint(
                     timestamp: forecast.timestamp,
                     value: Double(forecast.precipitationPercentage),
@@ -43,7 +48,7 @@ final class ComparisonViewModel {
             }
 
             // Wind data points
-            wind[source] = weather.hourly.prefix(24).compactMap { forecast in
+            wind[source] = futureHourly.compactMap { forecast in
                 guard let windSpeed = forecast.windSpeed else { return nil }
                 return DataPoint(
                     timestamp: forecast.timestamp,
@@ -53,7 +58,7 @@ final class ComparisonViewModel {
             }
 
             // Humidity data points
-            humidity[source] = weather.hourly.prefix(24).compactMap { forecast in
+            humidity[source] = futureHourly.compactMap { forecast in
                 guard let humidity = forecast.humidity else { return nil }
                 return DataPoint(
                     timestamp: forecast.timestamp,

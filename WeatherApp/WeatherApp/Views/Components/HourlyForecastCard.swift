@@ -12,6 +12,25 @@ struct HourlyForecastCard: View {
     let forecasts: [HourlyForecast]
     var timezone: TimeZone = .current
 
+    /// Filter forecasts to start from current hour (or next hour if we're past the current hour)
+    private var filteredForecasts: [HourlyForecast] {
+        let now = Date()
+        let filtered = forecasts.filter { $0.timestamp >= now }
+
+        // Diagnostic logging
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, h:mm a"
+        formatter.timeZone = timezone
+
+        print("🔍 [HourlyForecastCard] Current time: \(formatter.string(from: now))")
+        print("🔍 [HourlyForecastCard] Total forecasts: \(forecasts.count), Filtered: \(filtered.count)")
+        if let first = filtered.first {
+            print("🔍 [HourlyForecastCard] First visible forecast: \(formatter.string(from: first.timestamp))")
+        }
+
+        return filtered
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Hourly Forecast")
@@ -21,7 +40,7 @@ struct HourlyForecastCard: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
-                    ForEach(forecasts.prefix(24)) { forecast in
+                    ForEach(filteredForecasts.prefix(24)) { forecast in
                         HourlyForecastItem(forecast: forecast, timezone: timezone)
                     }
                 }
@@ -42,14 +61,15 @@ struct HourlyForecastItem: View {
     let timezone: TimeZone
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .center, spacing: 10) {
             // Time
             Text(formattedHour)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            // Icon
+            // Icon - top-aligned with fixed frame
             WeatherIconView(condition: forecast.condition, size: 32)
+                .frame(height: 32, alignment: .top)
 
             // Temperature
             Text(verbatim: forecast.temperature.temperatureString(unit: .fahrenheit))

@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Weather icon with SF Symbols and animations
+/// Weather icon with SF Symbols
 struct WeatherIconView: View {
     let condition: WeatherCondition
     let size: CGFloat
@@ -16,7 +16,6 @@ struct WeatherIconView: View {
         Image(systemName: condition.sfSymbolName)
             .symbolRenderingMode(.multicolor)
             .font(.system(size: size))
-            .symbolEffect(.bounce, value: condition)
     }
 }
 

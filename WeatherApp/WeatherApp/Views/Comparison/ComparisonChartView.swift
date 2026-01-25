@@ -19,44 +19,46 @@ struct ComparisonChartView: View {
                 .font(.headline)
                 .foregroundStyle(.primary)
 
-            Chart {
-                ForEach(Array(chartData.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
-                    ForEach(chartData[source] ?? []) { point in
-                        LineMark(
-                            x: .value("Time", point.timestamp),
-                            y: .value(metric.rawValue, point.value)
-                        )
-                        .foregroundStyle(by: .value("Source", source.shortName))
-                        .lineStyle(StrokeStyle(lineWidth: 2.5))
-                        .interpolationMethod(.catmullRom)
+            ScrollView(.horizontal, showsIndicators: true) {
+                Chart {
+                    ForEach(Array(chartData.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
+                        ForEach(chartData[source] ?? []) { point in
+                            LineMark(
+                                x: .value("Time", point.timestamp),
+                                y: .value(metric.rawValue, point.value)
+                            )
+                            .foregroundStyle(by: .value("Source", source.shortName))
+                            .lineStyle(StrokeStyle(lineWidth: 2.5))
+                            .interpolationMethod(.catmullRom)
 
-                        // Add point markers for clarity
-                        PointMark(
-                            x: .value("Time", point.timestamp),
-                            y: .value(metric.rawValue, point.value)
-                        )
-                        .foregroundStyle(by: .value("Source", source.shortName))
-                        .symbol(by: .value("Source", source.shortName))
+                            // Add point markers for clarity
+                            PointMark(
+                                x: .value("Time", point.timestamp),
+                                y: .value(metric.rawValue, point.value)
+                            )
+                            .foregroundStyle(by: .value("Source", source.shortName))
+                            .symbol(by: .value("Source", source.shortName))
+                        }
                     }
                 }
-            }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .hour, count: 3)) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel(format: .dateTime.hour())
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .hour, count: 2)) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel(format: .dateTime.hour().minute(), centered: false)
+                    }
                 }
-            }
-            .chartYAxis {
-                AxisMarks { value in
-                    AxisGridLine()
-                    AxisValueLabel()
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisGridLine()
+                        AxisValueLabel()
+                    }
                 }
+                .chartYAxisLabel(metric.unit, position: .trailing)
+                .chartLegend(position: .bottom, spacing: 12)
+                .frame(width: max(800, CGFloat(maxDataPoints) * 40), height: 300)
+                .padding()
             }
-            .chartYAxisLabel(metric.unit, position: .trailing)
-            .chartLegend(position: .bottom, spacing: 12)
-            .frame(height: 300)
-            .padding()
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
         }
@@ -74,5 +76,10 @@ struct ComparisonChartView: View {
         case .humidity:
             return data.humidity
         }
+    }
+
+    /// Calculate the maximum number of data points for sizing the chart
+    private var maxDataPoints: Int {
+        chartData.values.map { $0.count }.max() ?? 0
     }
 }

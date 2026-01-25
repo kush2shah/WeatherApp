@@ -80,7 +80,7 @@ final class WeatherKitService: WeatherServiceProtocol {
         location: Location
     ) -> SourcedWeatherInfo {
         let current = convertCurrentWeather(current)
-        let hourly = hourly.forecast.prefix(24).map { convertHourlyForecast($0) }
+        let hourly = hourly.forecast.map { convertHourlyForecast($0) }
         let daily = daily.forecast.prefix(10).map { convertDailyForecast($0) }
 
         return SourcedWeatherInfo(
@@ -112,11 +112,18 @@ final class WeatherKitService: WeatherServiceProtocol {
 
     /// Convert WeatherKit HourForecast to domain model
     private func convertHourlyForecast(_ hourly: WeatherKit.HourWeather) -> HourlyForecast {
-        HourlyForecast(
+        let convertedCondition = convertCondition(hourly.condition)
+
+        // Log warning for unmapped conditions
+        if convertedCondition == .unknown {
+            print("⚠️ [WeatherKit] Unmapped condition: \(hourly.condition) at \(hourly.date)")
+        }
+
+        return HourlyForecast(
             timestamp: hourly.date,
             temperature: hourly.temperature.value,
             apparentTemperature: hourly.apparentTemperature.value,
-            condition: convertCondition(hourly.condition),
+            condition: convertedCondition,
             precipitationChance: hourly.precipitationChance,
             precipitationAmount: hourly.precipitationAmount.value,
             humidity: hourly.humidity,
@@ -173,8 +180,8 @@ final class WeatherKitService: WeatherServiceProtocol {
             return .sleet
         case .freezingRain, .freezingDrizzle:
             return .freezingRain
-        case .cloudy:
-            return .cloudy
+        case .wintryMix:
+            return .sleet  // Map wintry mix to sleet (closest condition)
         case .haze:
             return .haze
         case .windy, .breezy:
