@@ -14,14 +14,7 @@ struct ContentView: View {
     @State private var showSearch = false
 
     var body: some View {
-        ZStack {
-            // Gradient background
-            GradientBackgroundView(
-                condition: viewModel?.weatherData?.weather(from: viewModel?.selectedSource ?? .openWeatherMap)?.current.condition ?? .clear
-            )
-
-            // Content
-            NavigationStack {
+        NavigationStack {
                 Group {
                     if let viewModel = viewModel, let weatherData = viewModel.weatherData {
                         if let selectedSource = viewModel.selectedSource {
@@ -128,7 +121,6 @@ struct ContentView: View {
                     }
                 }
             }
-        }
         .onAppear {
             if viewModel == nil {
                 viewModel = WeatherViewModel(modelContext: modelContext)
