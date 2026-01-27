@@ -76,7 +76,7 @@ actor TomorrowIOService: WeatherServiceProtocol {
         let hourly = hourlyTimeline?.intervals.prefix(24).compactMap { convertHourlyForecast($0) } ?? []
 
         // Daily forecast
-        let daily = dailyTimeline?.intervals.prefix(10).compactMap { convertDailyForecast($0) } ?? []
+        let daily = dailyTimeline?.intervals.prefix(10).compactMap { convertDailyForecast($0, timezone: location.timezone) } ?? []
 
         return SourcedWeatherInfo(
             source: .tomorrowIO,
@@ -144,7 +144,7 @@ actor TomorrowIOService: WeatherServiceProtocol {
         )
     }
 
-    private func convertDailyForecast(_ interval: TomorrowIOInterval) -> DailyForecast? {
+    private func convertDailyForecast(_ interval: TomorrowIOInterval, timezone: TimeZone) -> DailyForecast? {
         guard let timestamp = interval.timestamp else { return nil }
 
         let values = interval.values
@@ -155,6 +155,7 @@ actor TomorrowIOService: WeatherServiceProtocol {
 
         return DailyForecast(
             date: timestamp,
+            timezone: timezone,
             highTemperature: temp + 2, // Estimate
             lowTemperature: temp - 2, // Estimate
             condition: values.condition,

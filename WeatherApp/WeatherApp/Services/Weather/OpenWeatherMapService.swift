@@ -62,7 +62,7 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
         let hourlyForecasts = forecast.list.prefix(24).map { convertHourlyForecast($0) }
 
         // Daily forecast (group by day)
-        let dailyForecasts = convertDailyForecasts(forecast.list, sunrise: current.sys?.sunrise, sunset: current.sys?.sunset)
+        let dailyForecasts = convertDailyForecasts(forecast.list, sunrise: current.sys?.sunrise, sunset: current.sys?.sunset, timezone: location.timezone)
 
         return SourcedWeatherInfo(
             source: .openWeatherMap,
@@ -113,7 +113,8 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
     private func convertDailyForecasts(
         _ items: [OWMForecastItem],
         sunrise: Int?,
-        sunset: Int?
+        sunset: Int?,
+        timezone: TimeZone
     ) -> [DailyForecast] {
         // Group by day
         let grouped = Dictionary(grouping: items) { item in
@@ -136,6 +137,7 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
 
             return DailyForecast(
                 date: date,
+                timezone: timezone,
                 highTemperature: high,
                 lowTemperature: low,
                 condition: weatherInfo.condition,
