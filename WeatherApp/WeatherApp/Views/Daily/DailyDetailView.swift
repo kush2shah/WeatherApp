@@ -5,22 +5,32 @@
 
 import SwiftUI
 
+/// Selection state for the source picker
+enum SourceSelection: Hashable {
+    case source(WeatherSource)
+    case compare
+}
+
 /// Detail view for a single day's weather, presented as bottom sheet
 struct DailyDetailView: View {
     let forecast: DailyForecast
     let weatherData: WeatherData
 
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedSource: WeatherSource?
-    @State private var showComparison = false
+    @State private var selection: SourceSelection = .compare
 
     private let formatter = WeatherFormatter.shared
+
+    private var availableSources: [WeatherSource] {
+        weatherData.availableSources
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
                     headerSection
+                    sourcePickerSection
                 }
                 .padding(.vertical)
             }
@@ -34,7 +44,9 @@ struct DailyDetailView: View {
             }
         }
         .onAppear {
-            selectedSource = weatherData.primarySource
+            if let primary = weatherData.primarySource {
+                selection = .source(primary)
+            }
         }
     }
 
@@ -74,6 +86,70 @@ struct DailyDetailView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal)
+    }
+
+    // MARK: - Source Picker
+
+    private var sourcePickerSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(availableSources, id: \.self) { source in
+                    SourcePickerButton(
+                        title: source.shortName,
+                        isSelected: selection == .source(source)
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selection = .source(source)
+                        }
+                    }
+                }
+
+                if availableSources.count > 1 {
+                    SourcePickerButton(
+                        title: "Compare",
+                        isSelected: selection == .compare,
+                        icon: "chart.bar.xaxis"
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selection = .compare
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+}
+
+/// Pill-style button for source selection
+struct SourcePickerButton: View {
+    let title: String
+    let isSelected: Bool
+    var icon: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.caption)
+                }
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                isSelected
+                    ? Color.primary.opacity(0.9)
+                    : Color(.tertiarySystemFill)
+            )
+            .foregroundStyle(isSelected ? Color(.systemBackground) : .primary)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 
