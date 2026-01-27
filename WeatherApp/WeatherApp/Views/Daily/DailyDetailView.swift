@@ -25,12 +25,32 @@ struct DailyDetailView: View {
         weatherData.availableSources
     }
 
+    /// Get hourly forecasts for the selected day from the selected source
+    private var hourlyForDay: [HourlyForecast] {
+        guard case .source(let source) = selection,
+              let weather = weatherData.weather(from: source) else {
+            return []
+        }
+
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: forecast.date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+
+        return weather.hourly.filter { hourly in
+            hourly.timestamp >= dayStart && hourly.timestamp < dayEnd
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
                     headerSection
                     sourcePickerSection
+
+                    if case .source = selection {
+                        hourlyTimelineSection
+                    }
                 }
                 .padding(.vertical)
             }
@@ -118,6 +138,89 @@ struct DailyDetailView: View {
             }
             .padding(.horizontal)
         }
+    }
+
+    // MARK: - Hourly Timeline
+
+    @ViewBuilder
+    private var hourlyTimelineSection: some View {
+        if !hourlyForDay.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Hourly", systemImage: "clock")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 24)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(hourlyForDay) { hour in
+                            DailyHourCell(hour: hour, timezone: forecast.timezone)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .padding(.horizontal)
+        }
+    }
+}
+
+/// Individual hour cell for the timeline
+struct DailyHourCell: View {
+    let hour: HourlyForecast
+    let timezone: TimeZone
+
+    private let formatter = WeatherFormatter.shared
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Time
+            Text(formattedTime)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+
+            // Icon
+            WeatherIconView(condition: hour.condition, size: 24)
+
+            // Temperature
+            Text(formatter.temperature(hour.temperature))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            // Precipitation (if any)
+            if hour.precipitationChance > 0 {
+                Text(formatter.percentage(hour.precipitationChance))
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.blue)
+            } else {
+                Text(" ")
+                    .font(.caption2)
+            }
+
+            // Wind
+            if let wind = hour.windSpeed {
+                Text(formatter.wind(wind))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 56)
+        .padding(.vertical, 8)
+    }
+
+    private var formattedTime: String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = timezone
+        dateFormatter.dateFormat = "ha"
+        return dateFormatter.string(from: hour.timestamp).lowercased()
     }
 }
 
