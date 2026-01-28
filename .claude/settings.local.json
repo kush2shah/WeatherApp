@@ -7,7 +7,15 @@
       "WebFetch(domain:www.polpiella.dev)",
       "mcp__serena__check_onboarding_performed",
       "mcp__xcodebuildmcp__list_schemes",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "mcp__serena__read_memory",
+      "mcp__serena__get_symbols_overview",
+      "Bash(xcodebuild:*)",
+      "mcp__serena__find_symbol",
+      "mcp__serena__think_about_collected_information",
+      "mcp__serena__think_about_task_adherence",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add hourly timeline section to DailyDetailView\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

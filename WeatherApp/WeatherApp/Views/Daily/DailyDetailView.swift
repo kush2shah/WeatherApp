@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Charts
 
 /// Selection state for the source picker
 enum SourceSelection: Hashable {
@@ -48,9 +49,12 @@ struct DailyDetailView: View {
                     headerSection
                     sourcePickerSection
 
-                    if case .source = selection {
+                    switch selection {
+                    case .source:
                         hourlyTimelineSection
                         conditionsGridSection
+                    case .compare:
+                        comparisonSection
                     }
                 }
                 .padding(.vertical)
@@ -257,6 +261,108 @@ struct DailyDetailView: View {
         .padding(.horizontal)
     }
 
+    // MARK: - Comparison Section
+
+    private var comparisonSection: some View {
+        VStack(spacing: 20) {
+            // Temperature comparison
+            ComparisonChartCard(
+                title: "Temperature Range",
+                icon: "thermometer.medium"
+            ) {
+                temperatureComparisonChart
+            }
+
+            // Precipitation comparison
+            ComparisonChartCard(
+                title: "Precipitation Chance",
+                icon: "cloud.rain"
+            ) {
+                precipitationComparisonChart
+            }
+
+            // Wind comparison
+            ComparisonChartCard(
+                title: "Wind Speed",
+                icon: "wind"
+            ) {
+                windComparisonChart
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var temperatureComparisonChart: some View {
+        Chart {
+            ForEach(availableSources, id: \.self) { source in
+                if let daily = dailyForecast(for: source) {
+                    BarMark(
+                        x: .value("Source", source.shortName),
+                        yStart: .value("Low", daily.lowTemperature),
+                        yEnd: .value("High", daily.highTemperature)
+                    )
+                    .foregroundStyle(colorForSource(source).gradient)
+                    .cornerRadius(4)
+                }
+            }
+        }
+        .chartYAxisLabel("Temperature")
+        .frame(height: 120)
+    }
+
+    private var precipitationComparisonChart: some View {
+        Chart {
+            ForEach(availableSources, id: \.self) { source in
+                if let daily = dailyForecast(for: source) {
+                    BarMark(
+                        x: .value("Source", source.shortName),
+                        y: .value("Chance", daily.precipitationChance * 100)
+                    )
+                    .foregroundStyle(colorForSource(source).gradient)
+                    .cornerRadius(4)
+                }
+            }
+        }
+        .chartYScale(domain: 0...100)
+        .chartYAxisLabel("%")
+        .frame(height: 120)
+    }
+
+    private var windComparisonChart: some View {
+        Chart {
+            ForEach(availableSources, id: \.self) { source in
+                if let daily = dailyForecast(for: source), let wind = daily.windSpeed {
+                    BarMark(
+                        x: .value("Source", source.shortName),
+                        y: .value("Speed", wind * 2.237) // Convert m/s to mph
+                    )
+                    .foregroundStyle(colorForSource(source).gradient)
+                    .cornerRadius(4)
+                }
+            }
+        }
+        .chartYAxisLabel("mph")
+        .frame(height: 120)
+    }
+
+    private func dailyForecast(for source: WeatherSource) -> DailyForecast? {
+        guard let weather = weatherData.weather(from: source) else { return nil }
+
+        let calendar = Calendar.current
+        return weather.daily.first { daily in
+            calendar.isDate(daily.date, inSameDayAs: forecast.date)
+        }
+    }
+
+    private func colorForSource(_ source: WeatherSource) -> Color {
+        switch source {
+        case .weatherKit: return .blue
+        case .noaa: return .green
+        case .openWeatherMap: return .orange
+        case .tomorrowIO: return .purple
+        }
+    }
+
     // MARK: - Helpers
 
     private func formatTime(_ date: Date) -> String {
@@ -374,6 +480,29 @@ struct ConditionCell: View {
         .padding(.vertical, 16)
         .background(Color(.quaternarySystemFill))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+/// Card container for comparison charts
+struct ComparisonChartCard<Content: View>: View {
+    let title: String
+    let icon: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: icon)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+
+            content()
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
     }
 }
 
