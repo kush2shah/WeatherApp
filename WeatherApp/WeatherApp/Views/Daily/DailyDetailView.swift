@@ -157,13 +157,27 @@ struct DailyDetailView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 24)
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
-                        ForEach(hourlyForDay) { hour in
-                            DailyHourCell(hour: hour, timezone: forecast.timezone)
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 0) {
+                            ForEach(hourlyForDay) { hour in
+                                DailyHourCell(
+                                    hour: hour,
+                                    timezone: forecast.timezone,
+                                    isCurrentHour: Calendar.current.isDate(hour.timestamp, equalTo: Date(), toGranularity: .hour)
+                                )
+                                .id(hour.id)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                    .onAppear {
+                        if let currentHour = hourlyForDay.first(where: {
+                            Calendar.current.isDate($0.timestamp, equalTo: Date(), toGranularity: .hour)
+                        }) {
+                            proxy.scrollTo(currentHour.id, anchor: .center)
                         }
                     }
-                    .padding(.horizontal, 16)
                 }
             }
             .padding(.vertical, 20)
@@ -397,6 +411,7 @@ struct DailyDetailView: View {
 struct DailyHourCell: View {
     let hour: HourlyForecast
     let timezone: TimeZone
+    var isCurrentHour: Bool = false
 
     private let formatter = WeatherFormatter.shared
 
@@ -436,6 +451,16 @@ struct DailyHourCell: View {
         }
         .frame(width: 56)
         .padding(.vertical, 8)
+        .background(
+            isCurrentHour
+                ? LinearGradient(
+                    colors: [Color.blue.opacity(0.2), Color.blue.opacity(0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                  )
+                : LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var formattedTime: String {
