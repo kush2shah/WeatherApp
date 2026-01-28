@@ -110,9 +110,26 @@ struct HourlyForecastItem: View {
     var sunrise: Date? = nil
     var sunset: Date? = nil
 
+    /// Check if this hour is nighttime by comparing time-of-day only
     private var isNight: Bool {
         guard let sunrise = sunrise, let sunset = sunset else { return false }
-        return forecast.timestamp < sunrise || forecast.timestamp >= sunset
+
+        var calendar = Calendar.current
+        calendar.timeZone = timezone
+
+        // Extract hour and minute components for comparison
+        let forecastComponents = calendar.dateComponents([.hour, .minute], from: forecast.timestamp)
+        let sunriseComponents = calendar.dateComponents([.hour, .minute], from: sunrise)
+        let sunsetComponents = calendar.dateComponents([.hour, .minute], from: sunset)
+
+        guard let forecastMinutes = forecastComponents.hour.map({ $0 * 60 + (forecastComponents.minute ?? 0) }),
+              let sunriseMinutes = sunriseComponents.hour.map({ $0 * 60 + (sunriseComponents.minute ?? 0) }),
+              let sunsetMinutes = sunsetComponents.hour.map({ $0 * 60 + (sunsetComponents.minute ?? 0) }) else {
+            return false
+        }
+
+        // Night = before sunrise OR at/after sunset
+        return forecastMinutes < sunriseMinutes || forecastMinutes >= sunsetMinutes
     }
 
     var body: some View {

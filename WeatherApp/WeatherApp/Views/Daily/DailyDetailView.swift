@@ -498,9 +498,26 @@ struct DailyHourCell: View {
 
     private let formatter = WeatherFormatter.shared
 
+    /// Check if this hour is nighttime by comparing time-of-day only
     private var isNight: Bool {
         guard let sunrise = sunrise, let sunset = sunset else { return false }
-        return hour.timestamp < sunrise || hour.timestamp >= sunset
+
+        var calendar = Calendar.current
+        calendar.timeZone = timezone
+
+        // Extract hour and minute components for comparison
+        let hourComponents = calendar.dateComponents([.hour, .minute], from: hour.timestamp)
+        let sunriseComponents = calendar.dateComponents([.hour, .minute], from: sunrise)
+        let sunsetComponents = calendar.dateComponents([.hour, .minute], from: sunset)
+
+        guard let hourMinutes = hourComponents.hour.map({ $0 * 60 + (hourComponents.minute ?? 0) }),
+              let sunriseMinutes = sunriseComponents.hour.map({ $0 * 60 + (sunriseComponents.minute ?? 0) }),
+              let sunsetMinutes = sunsetComponents.hour.map({ $0 * 60 + (sunsetComponents.minute ?? 0) }) else {
+            return false
+        }
+
+        // Night = before sunrise OR at/after sunset
+        return hourMinutes < sunriseMinutes || hourMinutes >= sunsetMinutes
     }
 
     var body: some View {
