@@ -50,6 +50,7 @@ struct DailyDetailView: View {
 
                     if case .source = selection {
                         hourlyTimelineSection
+                        conditionsGridSection
                     }
                 }
                 .padding(.vertical)
@@ -169,6 +170,121 @@ struct DailyDetailView: View {
             .padding(.horizontal)
         }
     }
+
+    // MARK: - Conditions Grid
+
+    private var conditionsGridSection: some View {
+        let columns = [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ]
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Label("Conditions", systemImage: "info.circle")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 24)
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                // Sunrise/Sunset
+                if let sunrise = forecast.sunrise, let sunset = forecast.sunset {
+                    ConditionCell(
+                        icon: "sun.horizon.fill",
+                        iconColor: .orange,
+                        title: "Sun",
+                        value: "\(formatTime(sunrise)) - \(formatTime(sunset))"
+                    )
+                }
+
+                // UV Index
+                if let uv = forecast.uvIndex {
+                    ConditionCell(
+                        icon: "sun.max.fill",
+                        iconColor: uvColor(for: uv),
+                        title: "UV Index",
+                        value: "\(Int(uv))",
+                        subtitle: uvDescription(for: uv)
+                    )
+                }
+
+                // Humidity
+                if let humidity = forecast.humidity {
+                    ConditionCell(
+                        icon: "humidity.fill",
+                        iconColor: .cyan,
+                        title: "Humidity",
+                        value: formatter.percentage(humidity)
+                    )
+                }
+
+                // Wind
+                if let wind = forecast.windSpeed {
+                    ConditionCell(
+                        icon: "wind",
+                        iconColor: .gray,
+                        title: "Wind",
+                        value: formatter.wind(wind)
+                    )
+                }
+
+                // Precipitation (show if chance > 10%)
+                if forecast.precipitationChance > 0.1 {
+                    ConditionCell(
+                        icon: "cloud.rain.fill",
+                        iconColor: .blue,
+                        title: "Precipitation",
+                        value: formatter.percentage(forecast.precipitationChance)
+                    )
+
+                    if let amount = forecast.precipitationAmount, amount > 0 {
+                        ConditionCell(
+                            icon: "drop.fill",
+                            iconColor: .blue,
+                            title: "Expected",
+                            value: String(format: "%.1f mm", amount)
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .padding(.horizontal)
+    }
+
+    // MARK: - Helpers
+
+    private func formatTime(_ date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = forecast.timezone
+        dateFormatter.dateFormat = "h:mm a"
+        return dateFormatter.string(from: date)
+    }
+
+    private func uvColor(for uv: Double) -> Color {
+        switch uv {
+        case 0..<3: return .green
+        case 3..<6: return .yellow
+        case 6..<8: return .orange
+        case 8..<11: return .red
+        default: return .purple
+        }
+    }
+
+    private func uvDescription(for uv: Double) -> String {
+        switch uv {
+        case 0..<3: return "Low"
+        case 3..<6: return "Moderate"
+        case 6..<8: return "High"
+        case 8..<11: return "Very High"
+        default: return "Extreme"
+        }
+    }
 }
 
 /// Individual hour cell for the timeline
@@ -221,6 +337,43 @@ struct DailyHourCell: View {
         dateFormatter.timeZone = timezone
         dateFormatter.dateFormat = "ha"
         return dateFormatter.string(from: hour.timestamp).lowercased()
+    }
+}
+
+/// Individual condition metric cell
+struct ConditionCell: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let value: String
+    var subtitle: String? = nil
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(iconColor)
+
+            Text(value)
+                .font(.system(.headline, design: .rounded))
+                .fontWeight(.semibold)
+
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color(.quaternarySystemFill))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
