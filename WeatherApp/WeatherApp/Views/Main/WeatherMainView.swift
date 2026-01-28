@@ -48,7 +48,9 @@ struct WeatherMainView: View {
                     // Hourly forecast
                     HourlyForecastCard(
                         forecasts: weather.hourly,
-                        timezone: weatherData.location.timezone
+                        timezone: weatherData.location.timezone,
+                        sunrise: weather.daily.first?.sunrise,
+                        sunset: weather.daily.first?.sunset
                     )
 
                     // Daily forecast
