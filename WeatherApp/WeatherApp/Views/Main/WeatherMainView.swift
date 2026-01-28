@@ -52,7 +52,7 @@ struct WeatherMainView: View {
                     )
 
                     // Daily forecast
-                    DailyForecastCard(forecasts: weather.daily)
+                    DailyForecastCard(forecasts: weather.daily, weatherData: weatherData)
 
                     // Comparison button
                     if weatherData.availableSources.count > 1 {
