@@ -42,6 +42,16 @@ struct DailyDetailView: View {
         }
     }
 
+    /// Get the daily forecast for the selected source (falls back to passed-in forecast)
+    private var selectedDayForecast: DailyForecast {
+        guard case .source(let source) = selection,
+              let weather = weatherData.weather(from: source),
+              let daily = weather.daily.first(where: { Calendar.current.isDate($0.date, inSameDayAs: forecast.date) }) else {
+            return forecast
+        }
+        return daily
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -205,8 +215,10 @@ struct DailyDetailView: View {
                 .padding(.horizontal, 24)
 
             LazyVGrid(columns: columns, spacing: 12) {
+                let dayData = selectedDayForecast
+
                 // Sunrise/Sunset
-                if let sunrise = forecast.sunrise, let sunset = forecast.sunset {
+                if let sunrise = dayData.sunrise, let sunset = dayData.sunset {
                     ConditionCell(
                         icon: "sun.horizon.fill",
                         iconColor: .orange,
@@ -216,7 +228,7 @@ struct DailyDetailView: View {
                 }
 
                 // UV Index
-                if let uv = forecast.uvIndex {
+                if let uv = dayData.uvIndex {
                     ConditionCell(
                         icon: "sun.max.fill",
                         iconColor: uvColor(for: uv),
@@ -227,7 +239,7 @@ struct DailyDetailView: View {
                 }
 
                 // Humidity
-                if let humidity = forecast.humidity {
+                if let humidity = dayData.humidity {
                     ConditionCell(
                         icon: "humidity.fill",
                         iconColor: .cyan,
@@ -237,7 +249,7 @@ struct DailyDetailView: View {
                 }
 
                 // Wind
-                if let wind = forecast.windSpeed {
+                if let wind = dayData.windSpeed {
                     ConditionCell(
                         icon: "wind",
                         iconColor: .gray,
@@ -247,15 +259,15 @@ struct DailyDetailView: View {
                 }
 
                 // Precipitation (show if chance > 10%)
-                if forecast.precipitationChance > 0.1 {
+                if dayData.precipitationChance > 0.1 {
                     ConditionCell(
                         icon: "cloud.rain.fill",
                         iconColor: .blue,
                         title: "Precipitation",
-                        value: formatter.percentage(forecast.precipitationChance)
+                        value: formatter.percentage(dayData.precipitationChance)
                     )
 
-                    if let amount = forecast.precipitationAmount, amount > 0 {
+                    if let amount = dayData.precipitationAmount, amount > 0 {
                         ConditionCell(
                             icon: "drop.fill",
                             iconColor: .blue,
