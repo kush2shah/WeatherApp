@@ -157,9 +157,57 @@ struct DailyDetailView: View {
 
     // MARK: - Hourly Timeline
 
+    /// Timeline items including hourly forecasts and sun events
+    private enum TimelineItem: Identifiable {
+        case hour(HourlyForecast)
+        case sunrise(Date)
+        case sunset(Date)
+
+        var id: String {
+            switch self {
+            case .hour(let h): return h.id.uuidString
+            case .sunrise(let d): return "sunrise-\(d.timeIntervalSince1970)"
+            case .sunset(let d): return "sunset-\(d.timeIntervalSince1970)"
+            }
+        }
+
+        var sortDate: Date {
+            switch self {
+            case .hour(let h): return h.timestamp
+            case .sunrise(let d): return d
+            case .sunset(let d): return d
+            }
+        }
+    }
+
+    private var timelineItems: [TimelineItem] {
+        let dayData = selectedDayForecast
+        var items: [TimelineItem] = hourlyForDay.map { .hour($0) }
+
+        // Add sunrise if within the day's hours
+        if let sunrise = dayData.sunrise,
+           let firstHour = hourlyForDay.first?.timestamp,
+           let lastHour = hourlyForDay.last?.timestamp,
+           sunrise >= firstHour && sunrise <= lastHour {
+            items.append(.sunrise(sunrise))
+        }
+
+        // Add sunset if within the day's hours
+        if let sunset = dayData.sunset,
+           let firstHour = hourlyForDay.first?.timestamp,
+           let lastHour = hourlyForDay.last?.timestamp,
+           sunset >= firstHour && sunset <= lastHour {
+            items.append(.sunset(sunset))
+        }
+
+        return items.sorted { $0.sortDate < $1.sortDate }
+    }
+
     @ViewBuilder
     private var hourlyTimelineSection: some View {
         if !hourlyForDay.isEmpty {
+            let dayData = selectedDayForecast
+
             VStack(alignment: .leading, spacing: 12) {
                 Label("Hourly", systemImage: "clock")
                     .font(.subheadline)
@@ -170,13 +218,24 @@ struct DailyDetailView: View {
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 0) {
-                            ForEach(hourlyForDay) { hour in
-                                DailyHourCell(
-                                    hour: hour,
-                                    timezone: forecast.timezone,
-                                    isCurrentHour: Calendar.current.isDate(hour.timestamp, equalTo: Date(), toGranularity: .hour)
-                                )
-                                .id(hour.id)
+                            ForEach(timelineItems) { item in
+                                switch item {
+                                case .hour(let hour):
+                                    DailyHourCell(
+                                        hour: hour,
+                                        timezone: forecast.timezone,
+                                        isCurrentHour: Calendar.current.isDate(hour.timestamp, equalTo: Date(), toGranularity: .hour),
+                                        sunrise: dayData.sunrise,
+                                        sunset: dayData.sunset
+                                    )
+                                    .id(item.id)
+                                case .sunrise(let time):
+                                    SunEventCell(isSunrise: true, time: time, timezone: forecast.timezone)
+                                        .id(item.id)
+                                case .sunset(let time):
+                                    SunEventCell(isSunrise: false, time: time, timezone: forecast.timezone)
+                                        .id(item.id)
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -185,7 +244,7 @@ struct DailyDetailView: View {
                         if let currentHour = hourlyForDay.first(where: {
                             Calendar.current.isDate($0.timestamp, equalTo: Date(), toGranularity: .hour)
                         }) {
-                            proxy.scrollTo(currentHour.id, anchor: .center)
+                            proxy.scrollTo(currentHour.id.uuidString, anchor: .center)
                         }
                     }
                 }
@@ -217,13 +276,23 @@ struct DailyDetailView: View {
             LazyVGrid(columns: columns, spacing: 12) {
                 let dayData = selectedDayForecast
 
-                // Sunrise/Sunset
-                if let sunrise = dayData.sunrise, let sunset = dayData.sunset {
+                // Sunrise
+                if let sunrise = dayData.sunrise {
                     ConditionCell(
-                        icon: "sun.horizon.fill",
+                        icon: "sunrise.fill",
                         iconColor: .orange,
-                        title: "Sun",
-                        value: "\(formatTime(sunrise)) - \(formatTime(sunset))"
+                        title: "Sunrise",
+                        value: formatTime(sunrise)
+                    )
+                }
+
+                // Sunset
+                if let sunset = dayData.sunset {
+                    ConditionCell(
+                        icon: "sunset.fill",
+                        iconColor: .orange,
+                        title: "Sunset",
+                        value: formatTime(sunset)
                     )
                 }
 
@@ -424,8 +493,15 @@ struct DailyHourCell: View {
     let hour: HourlyForecast
     let timezone: TimeZone
     var isCurrentHour: Bool = false
+    var sunrise: Date? = nil
+    var sunset: Date? = nil
 
     private let formatter = WeatherFormatter.shared
+
+    private var isNight: Bool {
+        guard let sunrise = sunrise, let sunset = sunset else { return false }
+        return hour.timestamp < sunrise || hour.timestamp >= sunset
+    }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -436,7 +512,7 @@ struct DailyHourCell: View {
                 .foregroundStyle(.secondary)
 
             // Icon
-            WeatherIconView(condition: hour.condition, size: 24)
+            WeatherIconView(condition: hour.condition, size: 24, isNight: isNight)
 
             // Temperature
             Text(formatter.temperature(hour.temperature))
@@ -480,6 +556,57 @@ struct DailyHourCell: View {
         dateFormatter.timeZone = timezone
         dateFormatter.dateFormat = "ha"
         return dateFormatter.string(from: hour.timestamp).lowercased()
+    }
+}
+
+/// Sunrise or sunset marker cell for the timeline
+struct SunEventCell: View {
+    let isSunrise: Bool
+    let time: Date
+    let timezone: TimeZone
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Time
+            Text(formattedTime)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(.orange)
+
+            // Icon
+            Image(systemName: isSunrise ? "sunrise.fill" : "sunset.fill")
+                .symbolRenderingMode(.multicolor)
+                .font(.system(size: 24))
+
+            // Label
+            Text(isSunrise ? "Sunrise" : "Sunset")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.orange)
+
+            // Spacer for alignment with hour cells
+            Text(" ")
+                .font(.caption2)
+            Text(" ")
+                .font(.caption2)
+        }
+        .frame(width: 56)
+        .padding(.vertical, 8)
+        .background(
+            LinearGradient(
+                colors: [Color.orange.opacity(0.15), Color.orange.opacity(0.05)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var formattedTime: String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = timezone
+        dateFormatter.dateFormat = "h:mm"
+        return dateFormatter.string(from: time)
     }
 }
 
