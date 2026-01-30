@@ -63,3 +63,6 @@ fastlane/test_output
 
 # API Keys
 .env
+
+# Git worktrees
+.worktrees/
