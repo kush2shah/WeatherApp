@@ -71,6 +71,7 @@ struct SourcedWeatherInfo: Codable, Hashable, Sendable {
 /// Weather data source
 enum WeatherSource: String, Codable, CaseIterable, Hashable {
     case weatherKit = "Apple WeatherKit"
+    case googleWeather = "Google Weather"
     case noaa = "NOAA/NWS"
     case openWeatherMap = "OpenWeatherMap"
     case tomorrowIO = "Tomorrow.io"
@@ -80,6 +81,8 @@ enum WeatherSource: String, Codable, CaseIterable, Hashable {
         switch self {
         case .weatherKit:
             return "Weather data provided by Apple WeatherKit"
+        case .googleWeather:
+            return "Weather data provided by Google Weather API"
         case .noaa:
             return "Weather data provided by NOAA National Weather Service"
         case .openWeatherMap:
@@ -99,6 +102,8 @@ enum WeatherSource: String, Codable, CaseIterable, Hashable {
         switch self {
         case .weatherKit:
             return "WeatherKit"
+        case .googleWeather:
+            return "Google"
         case .noaa:
             return "NOAA"
         case .openWeatherMap:
