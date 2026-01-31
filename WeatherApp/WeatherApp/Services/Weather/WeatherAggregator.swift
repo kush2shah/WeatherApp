@@ -20,18 +20,23 @@ final class WeatherAggregator {
     convenience init() {
         var services: [any WeatherServiceProtocol] = []
 
-        // Always include WeatherKit
+        // Always include WeatherKit (Priority #1)
         services.append(WeatherKitService())
 
-        // Always include NOAA (US only)
+        // Include Google Weather if API key is configured (Priority #2)
+        if Config.isSourceEnabled(.googleWeather) {
+            services.append(GoogleWeatherService())
+        }
+
+        // Always include NOAA (US only) (Priority #3)
         services.append(NOAAWeatherService())
 
-        // Include OpenWeatherMap if API key is configured
+        // Include OpenWeatherMap if API key is configured (Priority #4)
         if Config.isSourceEnabled(.openWeatherMap) {
             services.append(OpenWeatherMapService())
         }
 
-        // Include Tomorrow.io if API key is configured
+        // Include Tomorrow.io if API key is configured (Priority #5)
         if Config.isSourceEnabled(.tomorrowIO) {
             services.append(TomorrowIOService())
         }

@@ -452,6 +452,7 @@ struct DailyDetailView: View {
     private func colorForSource(_ source: WeatherSource) -> Color {
         switch source {
         case .weatherKit: return .blue
+        case .googleWeather: return .red
         case .noaa: return .green
         case .openWeatherMap: return .orange
         case .tomorrowIO: return .purple

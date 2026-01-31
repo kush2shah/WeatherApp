@@ -33,12 +33,32 @@ enum Config {
         return ""
     }()
 
+    /// Google Weather API key
+    /// Sign up at: https://console.cloud.google.com/apis/library/weather.googleapis.com
+    /// Requires: Google Cloud Platform project with billing enabled
+    static let googleWeatherAPIKey: String = {
+        // Try Info.plist first (GCP_API_KEY)
+        if let key = Bundle.main.object(forInfoDictionaryKey: "GCP_API_KEY") as? String, !key.isEmpty {
+            return key
+        }
+        // Fallback to environment variable
+        if let key = ProcessInfo.processInfo.environment["GOOGLE_WEATHER_API_KEY"], !key.isEmpty {
+            return key
+        }
+        // Fallback to hardcoded value (for development only - never commit this!)
+        return ""
+    }()
+
     /// Check which weather sources are enabled
     static var enabledSources: [WeatherSource] {
         var sources: [WeatherSource] = [.weatherKit, .noaa]
 
         if !openWeatherMapAPIKey.isEmpty {
             sources.append(.openWeatherMap)
+        }
+
+        if !googleWeatherAPIKey.isEmpty {
+            sources.append(.googleWeather)
         }
 
         if !tomorrowIOAPIKey.isEmpty {
