@@ -1,0 +1,746 @@
+//
+//  DailyDetailView.swift
+//  WeatherApp
+//
+
+import SwiftUI
+import Charts
+
+/// Selection state for the source picker
+enum SourceSelection: Hashable {
+    case source(WeatherSource)
+    case compare
+}
+
+/// Detail view for a single day's weather, presented as bottom sheet
+struct DailyDetailView: View {
+    let forecast: DailyForecast
+    let weatherData: WeatherData
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selection: SourceSelection = .compare
+
+    private let formatter = WeatherFormatter.shared
+
+    private var availableSources: [WeatherSource] {
+        weatherData.availableSources
+    }
+
+    /// Get hourly forecasts for the selected day from the selected source
+    private var hourlyForDay: [HourlyForecast] {
+        guard case .source(let source) = selection,
+              let weather = weatherData.weather(from: source) else {
+            return []
+        }
+
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: forecast.date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+
+        return weather.hourly.filter { hourly in
+            hourly.timestamp >= dayStart && hourly.timestamp < dayEnd
+        }
+    }
+
+    /// Get the daily forecast for the selected source (falls back to passed-in forecast)
+    private var selectedDayForecast: DailyForecast {
+        guard case .source(let source) = selection,
+              let weather = weatherData.weather(from: source),
+              let daily = weather.daily.first(where: { Calendar.current.isDate($0.date, inSameDayAs: forecast.date) }) else {
+            return forecast
+        }
+        return daily
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    headerSection
+                    sourcePickerSection
+
+                    switch selection {
+                    case .source:
+                        hourlyTimelineSection
+                        conditionsGridSection
+                    case .compare:
+                        comparisonSection
+                    }
+                }
+                .padding(.vertical)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.medium)
+                }
+            }
+        }
+        .onAppear {
+            if let primary = weatherData.primarySource {
+                selection = .source(primary)
+            }
+        }
+    }
+
+    // MARK: - Header Section
+
+    private var headerSection: some View {
+        VStack(spacing: 8) {
+            Text(formatter.date(forecast.date, timezone: forecast.timezone, style: .long))
+                .font(.system(.title2, design: .rounded))
+                .fontWeight(.semibold)
+
+            HStack(spacing: 16) {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("High")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatter.temperature(forecast.highTemperature))
+                        .font(.system(.title, design: .rounded))
+                        .fontWeight(.medium)
+                }
+
+                WeatherIconView(condition: forecast.condition, size: 48)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Low")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatter.temperature(forecast.lowTemperature))
+                        .font(.system(.title, design: .rounded))
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text(forecast.conditionDescription)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal)
+    }
+
+    // MARK: - Source Picker
+
+    private var sourcePickerSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(availableSources, id: \.self) { source in
+                    SourcePickerButton(
+                        title: source.shortName,
+                        isSelected: selection == .source(source)
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selection = .source(source)
+                        }
+                    }
+                }
+
+                if availableSources.count > 1 {
+                    SourcePickerButton(
+                        title: "Compare",
+                        isSelected: selection == .compare,
+                        icon: "chart.bar.xaxis"
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selection = .compare
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    // MARK: - Hourly Timeline
+
+    /// Timeline items including hourly forecasts and sun events
+    private enum TimelineItem: Identifiable {
+        case hour(HourlyForecast)
+        case sunrise(Date)
+        case sunset(Date)
+
+        var id: String {
+            switch self {
+            case .hour(let h): return h.id.uuidString
+            case .sunrise(let d): return "sunrise-\(d.timeIntervalSince1970)"
+            case .sunset(let d): return "sunset-\(d.timeIntervalSince1970)"
+            }
+        }
+
+        var sortDate: Date {
+            switch self {
+            case .hour(let h): return h.timestamp
+            case .sunrise(let d): return d
+            case .sunset(let d): return d
+            }
+        }
+    }
+
+    private var timelineItems: [TimelineItem] {
+        let dayData = selectedDayForecast
+        var items: [TimelineItem] = hourlyForDay.map { .hour($0) }
+
+        // Add sunrise if within the day's hours
+        if let sunrise = dayData.sunrise,
+           let firstHour = hourlyForDay.first?.timestamp,
+           let lastHour = hourlyForDay.last?.timestamp,
+           sunrise >= firstHour && sunrise <= lastHour {
+            items.append(.sunrise(sunrise))
+        }
+
+        // Add sunset if within the day's hours
+        if let sunset = dayData.sunset,
+           let firstHour = hourlyForDay.first?.timestamp,
+           let lastHour = hourlyForDay.last?.timestamp,
+           sunset >= firstHour && sunset <= lastHour {
+            items.append(.sunset(sunset))
+        }
+
+        return items.sorted { $0.sortDate < $1.sortDate }
+    }
+
+    @ViewBuilder
+    private var hourlyTimelineSection: some View {
+        if !hourlyForDay.isEmpty {
+            let dayData = selectedDayForecast
+
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Hourly", systemImage: "clock")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 24)
+
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 0) {
+                            ForEach(timelineItems) { item in
+                                switch item {
+                                case .hour(let hour):
+                                    DailyHourCell(
+                                        hour: hour,
+                                        timezone: forecast.timezone,
+                                        isCurrentHour: Calendar.current.isDate(hour.timestamp, equalTo: Date(), toGranularity: .hour),
+                                        sunrise: dayData.sunrise,
+                                        sunset: dayData.sunset
+                                    )
+                                    .id(item.id)
+                                case .sunrise(let time):
+                                    SunEventCell(isSunrise: true, time: time, timezone: forecast.timezone)
+                                        .id(item.id)
+                                case .sunset(let time):
+                                    SunEventCell(isSunrise: false, time: time, timezone: forecast.timezone)
+                                        .id(item.id)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                    .onAppear {
+                        if let currentHour = hourlyForDay.first(where: {
+                            Calendar.current.isDate($0.timestamp, equalTo: Date(), toGranularity: .hour)
+                        }) {
+                            proxy.scrollTo(currentHour.id.uuidString, anchor: .center)
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .padding(.horizontal)
+        }
+    }
+
+    // MARK: - Conditions Grid
+
+    private var conditionsGridSection: some View {
+        let columns = [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ]
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Label("Conditions", systemImage: "info.circle")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 24)
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                let dayData = selectedDayForecast
+
+                // Sunrise
+                if let sunrise = dayData.sunrise {
+                    ConditionCell(
+                        icon: "sunrise.fill",
+                        iconColor: .orange,
+                        title: "Sunrise",
+                        value: formatTime(sunrise)
+                    )
+                }
+
+                // Sunset
+                if let sunset = dayData.sunset {
+                    ConditionCell(
+                        icon: "sunset.fill",
+                        iconColor: .orange,
+                        title: "Sunset",
+                        value: formatTime(sunset)
+                    )
+                }
+
+                // UV Index
+                if let uv = dayData.uvIndex {
+                    ConditionCell(
+                        icon: "sun.max.fill",
+                        iconColor: uvColor(for: uv),
+                        title: "UV Index",
+                        value: "\(Int(uv))",
+                        subtitle: uvDescription(for: uv)
+                    )
+                }
+
+                // Humidity
+                if let humidity = dayData.humidity {
+                    ConditionCell(
+                        icon: "humidity.fill",
+                        iconColor: .cyan,
+                        title: "Humidity",
+                        value: formatter.percentage(humidity)
+                    )
+                }
+
+                // Wind
+                if let wind = dayData.windSpeed {
+                    ConditionCell(
+                        icon: "wind",
+                        iconColor: .gray,
+                        title: "Wind",
+                        value: formatter.wind(wind)
+                    )
+                }
+
+                // Precipitation (show if chance > 10%)
+                if dayData.precipitationChance > 0.1 {
+                    ConditionCell(
+                        icon: "cloud.rain.fill",
+                        iconColor: .blue,
+                        title: "Precipitation",
+                        value: formatter.percentage(dayData.precipitationChance)
+                    )
+
+                    if let amount = dayData.precipitationAmount, amount > 0 {
+                        ConditionCell(
+                            icon: "drop.fill",
+                            iconColor: .blue,
+                            title: "Expected",
+                            value: String(format: "%.1f mm", amount)
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .padding(.horizontal)
+    }
+
+    // MARK: - Comparison Section
+
+    private var comparisonSection: some View {
+        VStack(spacing: 20) {
+            // Temperature comparison
+            ComparisonChartCard(
+                title: "Temperature Range",
+                icon: "thermometer.medium"
+            ) {
+                temperatureComparisonChart
+            }
+
+            // Precipitation comparison
+            ComparisonChartCard(
+                title: "Precipitation Chance",
+                icon: "cloud.rain"
+            ) {
+                precipitationComparisonChart
+            }
+
+            // Wind comparison
+            ComparisonChartCard(
+                title: "Wind Speed",
+                icon: "wind"
+            ) {
+                windComparisonChart
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var temperatureComparisonChart: some View {
+        Chart {
+            ForEach(availableSources, id: \.self) { source in
+                if let daily = dailyForecast(for: source) {
+                    BarMark(
+                        x: .value("Source", source.shortName),
+                        yStart: .value("Low", daily.lowTemperature),
+                        yEnd: .value("High", daily.highTemperature)
+                    )
+                    .foregroundStyle(colorForSource(source).gradient)
+                    .cornerRadius(4)
+                }
+            }
+        }
+        .chartYAxisLabel("Temperature")
+        .frame(height: 120)
+    }
+
+    private var precipitationComparisonChart: some View {
+        Chart {
+            ForEach(availableSources, id: \.self) { source in
+                if let daily = dailyForecast(for: source) {
+                    BarMark(
+                        x: .value("Source", source.shortName),
+                        y: .value("Chance", daily.precipitationChance * 100)
+                    )
+                    .foregroundStyle(colorForSource(source).gradient)
+                    .cornerRadius(4)
+                }
+            }
+        }
+        .chartYScale(domain: 0...100)
+        .chartYAxisLabel("%")
+        .frame(height: 120)
+    }
+
+    private var windComparisonChart: some View {
+        Chart {
+            ForEach(availableSources, id: \.self) { source in
+                if let daily = dailyForecast(for: source), let wind = daily.windSpeed {
+                    BarMark(
+                        x: .value("Source", source.shortName),
+                        y: .value("Speed", wind * 2.237) // Convert m/s to mph
+                    )
+                    .foregroundStyle(colorForSource(source).gradient)
+                    .cornerRadius(4)
+                }
+            }
+        }
+        .chartYAxisLabel("mph")
+        .frame(height: 120)
+    }
+
+    private func dailyForecast(for source: WeatherSource) -> DailyForecast? {
+        guard let weather = weatherData.weather(from: source) else { return nil }
+
+        let calendar = Calendar.current
+        return weather.daily.first { daily in
+            calendar.isDate(daily.date, inSameDayAs: forecast.date)
+        }
+    }
+
+    private func colorForSource(_ source: WeatherSource) -> Color {
+        switch source {
+        case .weatherKit: return .blue
+        case .googleWeather: return .red
+        case .noaa: return .green
+        case .openWeatherMap: return .orange
+        case .tomorrowIO: return .purple
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func formatTime(_ date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = forecast.timezone
+        dateFormatter.dateFormat = "h:mm a"
+        return dateFormatter.string(from: date)
+    }
+
+    private func uvColor(for uv: Double) -> Color {
+        switch uv {
+        case 0..<3: return .green
+        case 3..<6: return .yellow
+        case 6..<8: return .orange
+        case 8..<11: return .red
+        default: return .purple
+        }
+    }
+
+    private func uvDescription(for uv: Double) -> String {
+        switch uv {
+        case 0..<3: return "Low"
+        case 3..<6: return "Moderate"
+        case 6..<8: return "High"
+        case 8..<11: return "Very High"
+        default: return "Extreme"
+        }
+    }
+}
+
+/// Individual hour cell for the timeline
+struct DailyHourCell: View {
+    let hour: HourlyForecast
+    let timezone: TimeZone
+    var isCurrentHour: Bool = false
+    var sunrise: Date? = nil
+    var sunset: Date? = nil
+
+    private let formatter = WeatherFormatter.shared
+
+    /// Check if this hour is nighttime by comparing time-of-day only
+    private var isNight: Bool {
+        guard let sunrise = sunrise, let sunset = sunset else { return false }
+
+        var calendar = Calendar.current
+        calendar.timeZone = timezone
+
+        // Extract hour and minute components for comparison
+        let hourComponents = calendar.dateComponents([.hour, .minute], from: hour.timestamp)
+        let sunriseComponents = calendar.dateComponents([.hour, .minute], from: sunrise)
+        let sunsetComponents = calendar.dateComponents([.hour, .minute], from: sunset)
+
+        guard let hourMinutes = hourComponents.hour.map({ $0 * 60 + (hourComponents.minute ?? 0) }),
+              let sunriseMinutes = sunriseComponents.hour.map({ $0 * 60 + (sunriseComponents.minute ?? 0) }),
+              let sunsetMinutes = sunsetComponents.hour.map({ $0 * 60 + (sunsetComponents.minute ?? 0) }) else {
+            return false
+        }
+
+        // Night = before sunrise OR at/after sunset
+        return hourMinutes < sunriseMinutes || hourMinutes >= sunsetMinutes
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Time
+            Text(formattedTime)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+
+            // Icon
+            WeatherIconView(condition: hour.condition, size: 24, isNight: isNight)
+
+            // Temperature
+            Text(formatter.temperature(hour.temperature))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            // Precipitation (if any)
+            if hour.precipitationChance > 0 {
+                Text(formatter.percentage(hour.precipitationChance))
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.blue)
+            } else {
+                Text(" ")
+                    .font(.caption2)
+            }
+
+            // Wind
+            if let wind = hour.windSpeed {
+                Text(formatter.wind(wind))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 56)
+        .padding(.vertical, 8)
+        .background(
+            isCurrentHour
+                ? LinearGradient(
+                    colors: [Color.blue.opacity(0.2), Color.blue.opacity(0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                  )
+                : LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var formattedTime: String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = timezone
+        dateFormatter.dateFormat = "ha"
+        return dateFormatter.string(from: hour.timestamp).lowercased()
+    }
+}
+
+/// Sunrise or sunset marker cell for the timeline
+struct SunEventCell: View {
+    let isSunrise: Bool
+    let time: Date
+    let timezone: TimeZone
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Time
+            Text(formattedTime)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(.orange)
+
+            // Icon
+            Image(systemName: isSunrise ? "sunrise.fill" : "sunset.fill")
+                .symbolRenderingMode(.multicolor)
+                .font(.system(size: 24))
+
+            // Label
+            Text(isSunrise ? "Sunrise" : "Sunset")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.orange)
+
+            // Spacer for alignment with hour cells
+            Text(" ")
+                .font(.caption2)
+            Text(" ")
+                .font(.caption2)
+        }
+        .frame(width: 56)
+        .padding(.vertical, 8)
+        .background(
+            LinearGradient(
+                colors: [Color.orange.opacity(0.15), Color.orange.opacity(0.05)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var formattedTime: String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeZone = timezone
+        dateFormatter.dateFormat = "h:mm"
+        return dateFormatter.string(from: time)
+    }
+}
+
+/// Individual condition metric cell
+struct ConditionCell: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let value: String
+    var subtitle: String? = nil
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(iconColor)
+
+            Text(value)
+                .font(.system(.headline, design: .rounded))
+                .fontWeight(.semibold)
+
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color(.quaternarySystemFill))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+/// Card container for comparison charts
+struct ComparisonChartCard<Content: View>: View {
+    let title: String
+    let icon: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: icon)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+
+            content()
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+    }
+}
+
+/// Pill-style button for source selection
+struct SourcePickerButton: View {
+    let title: String
+    let isSelected: Bool
+    var icon: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.caption)
+                }
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                isSelected
+                    ? Color.primary.opacity(0.9)
+                    : Color(.tertiarySystemFill)
+            )
+            .foregroundStyle(isSelected ? Color(.systemBackground) : .primary)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+#Preview {
+    DailyDetailView(
+        forecast: DailyForecast(
+            date: Date(),
+            highTemperature: 24,
+            lowTemperature: 15,
+            condition: .partlyCloudy,
+            conditionDescription: "Partly Cloudy",
+            precipitationChance: 0.2,
+            sunrise: Calendar.current.date(bySettingHour: 7, minute: 15, second: 0, of: Date()),
+            sunset: Calendar.current.date(bySettingHour: 17, minute: 45, second: 0, of: Date()),
+            humidity: 0.65,
+            windSpeed: 5.2,
+            uvIndex: 6
+        ),
+        weatherData: WeatherData(
+            location: Location(
+                name: "San Francisco",
+                coordinate: Coordinate(latitude: 37.7749, longitude: -122.4194)
+            ),
+            sources: [:]
+        )
+    )
+}

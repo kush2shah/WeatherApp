@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>OWM_API_KEY</key>
+	<string>eb35501fe14b0bfeeb997657ed173e6c</string>
+	<key>TOMORROW_API_KEY</key>
+	<string>kr9vSoHmBhBtWMI2qckwhAoiAUfO1775</string>
+	<key>GCP_API_KEY</key>
+	<string>AIzaSyCvF3OepSLh2yTW2Ykud1HSfJoPY8AjmaU</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
@@ -10,5 +16,9 @@
 	<string>WeatherApp needs your location to provide accurate weather forecasts.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>WeatherApp needs your location to provide accurate weather forecasts and background updates.</string>
+	<key>CLOUD_RUN_PROXY_API_KEY</key>
+	<string>12e41cad6b1132308c75673905f0f17220623e481366f584f1f1d730ae1c6f78</string>
+	<key>CLOUD_RUN_PROXY_URL</key>
+	<string>https://weather-proxy-777152718569.us-central1.run.app</string>
 </dict>
 </plist>

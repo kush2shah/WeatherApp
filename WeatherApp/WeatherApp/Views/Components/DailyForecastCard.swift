@@ -10,6 +10,8 @@ import SwiftUI
 /// Daily forecast card with list of days
 struct DailyForecastCard: View {
     let forecasts: [DailyForecast]
+    let weatherData: WeatherData
+    @State private var selectedForecast: DailyForecast?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -24,12 +26,17 @@ struct DailyForecastCard: View {
                 let maxTemp = forecasts.map { $0.highTemperature }.max() ?? 100
                 
                 ForEach(Array(forecasts.prefix(10).enumerated()), id: \.element.id) { index, forecast in
-                    DailyForecastRow(
-                        forecast: forecast,
-                        minTemp: minTemp,
-                        maxTemp: maxTemp
-                    )
-                    
+                    Button {
+                        selectedForecast = forecast
+                    } label: {
+                        DailyForecastRow(
+                            forecast: forecast,
+                            minTemp: minTemp,
+                            maxTemp: maxTemp
+                        )
+                    }
+                    .buttonStyle(.plain)
+
                     if index < min(9, forecasts.count - 1) {
                         Divider()
                             .padding(.leading, 24)
@@ -44,6 +51,11 @@ struct DailyForecastCard: View {
             in: RoundedRectangle(cornerRadius: 24, style: .continuous)
         )
         .padding(.horizontal)
+        .sheet(item: $selectedForecast) { forecast in
+            DailyDetailView(forecast: forecast, weatherData: weatherData)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
     }
 }
 
@@ -163,7 +175,11 @@ struct TemperatureBar: View {
                     conditionDescription: "Partly Cloudy",
                     precipitationChance: 0.1
                 )
-            }
+            },
+            weatherData: WeatherData(
+                location: Location(name: "Preview", coordinate: Coordinate(latitude: 0, longitude: 0)),
+                sources: [:]
+            )
         )
     }
 }

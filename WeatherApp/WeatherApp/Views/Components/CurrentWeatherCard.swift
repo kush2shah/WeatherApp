@@ -10,12 +10,36 @@ import SwiftUI
 /// Large current weather card with frosted glass effect
 struct CurrentWeatherCard: View {
     let weather: CurrentWeather
+    var sunrise: Date? = nil
+    var sunset: Date? = nil
+    var timezone: TimeZone = .current
+
+    /// Check if current time is nighttime
+    private var isNight: Bool {
+        guard let sunrise = sunrise, let sunset = sunset else { return false }
+
+        var calendar = Calendar.current
+        calendar.timeZone = timezone
+
+        let now = Date()
+        let nowComponents = calendar.dateComponents([.hour, .minute], from: now)
+        let sunriseComponents = calendar.dateComponents([.hour, .minute], from: sunrise)
+        let sunsetComponents = calendar.dateComponents([.hour, .minute], from: sunset)
+
+        guard let nowMinutes = nowComponents.hour.map({ $0 * 60 + (nowComponents.minute ?? 0) }),
+              let sunriseMinutes = sunriseComponents.hour.map({ $0 * 60 + (sunriseComponents.minute ?? 0) }),
+              let sunsetMinutes = sunsetComponents.hour.map({ $0 * 60 + (sunsetComponents.minute ?? 0) }) else {
+            return false
+        }
+
+        return nowMinutes < sunriseMinutes || nowMinutes >= sunsetMinutes
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             // Main Info
             VStack(spacing: 4) {
-                WeatherIconView(condition: weather.condition, size: 80)
+                WeatherIconView(condition: weather.condition, size: 80, isNight: isNight)
                     .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2) // Added contrast shadow
                     .padding(.bottom, 8)
 

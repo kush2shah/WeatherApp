@@ -9,15 +9,20 @@ import Foundation
 
 /// Application configuration
 enum Config {
+    private static let infoDict = Bundle.main.infoDictionary ?? [:]
+
     /// OpenWeatherMap API key
     /// Sign up at: https://openweathermap.org/api
     /// Free tier: 1,000 calls/day
     static let openWeatherMapAPIKey: String = {
-        // Try environment variable first
+        // Try Info.plist first (works when running standalone)
+        if let key = Bundle.main.object(forInfoDictionaryKey: "OWM_API_KEY") as? String, !key.isEmpty {
+            return key
+        }
+        // Fallback to environment variable (for local development/testing)
         if let key = ProcessInfo.processInfo.environment["OWM_API_KEY"], !key.isEmpty {
             return key
         }
-        // Fallback to hardcoded value (for development only - never commit this!)
         return ""
     }()
 
@@ -25,13 +30,36 @@ enum Config {
     /// Sign up at: https://www.tomorrow.io/weather-api/
     /// Free tier: 500 calls/day, 25 calls/hour
     static let tomorrowIOAPIKey: String = {
-        // Try environment variable first
+        // Try Info.plist first (works when running standalone)
+        if let key = Bundle.main.object(forInfoDictionaryKey: "TOMORROW_API_KEY") as? String, !key.isEmpty {
+            return key
+        }
+        // Fallback to environment variable (for local development/testing)
         if let key = ProcessInfo.processInfo.environment["TOMORROW_API_KEY"], !key.isEmpty {
+            return key
+        }
+        return ""
+    }()
+
+    /// Google Weather API key
+    /// Sign up at: https://console.cloud.google.com/apis/library/weather.googleapis.com
+    /// Requires: Google Cloud Platform project with billing enabled
+    static let googleWeatherAPIKey: String = {
+        // Try Info.plist first (GCP_API_KEY)
+        if let key = Bundle.main.object(forInfoDictionaryKey: "GCP_API_KEY") as? String, !key.isEmpty {
+            return key
+        }
+        // Fallback to environment variable
+        if let key = ProcessInfo.processInfo.environment["GOOGLE_WEATHER_API_KEY"], !key.isEmpty {
             return key
         }
         // Fallback to hardcoded value (for development only - never commit this!)
         return ""
     }()
+
+    // Cloud Run Proxy Configuration
+    static let cloudRunProxyAPIKey = infoDict["CLOUD_RUN_PROXY_API_KEY"] as? String ?? ""
+    static let cloudRunProxyURL = infoDict["CLOUD_RUN_PROXY_URL"] as? String ?? ""
 
     /// Check which weather sources are enabled
     static var enabledSources: [WeatherSource] {
@@ -39,6 +67,10 @@ enum Config {
 
         if !openWeatherMapAPIKey.isEmpty {
             sources.append(.openWeatherMap)
+        }
+
+        if !googleWeatherAPIKey.isEmpty {
+            sources.append(.googleWeather)
         }
 
         if !tomorrowIOAPIKey.isEmpty {

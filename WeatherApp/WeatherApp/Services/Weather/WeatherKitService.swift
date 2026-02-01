@@ -81,7 +81,7 @@ final class WeatherKitService: WeatherServiceProtocol {
     ) -> SourcedWeatherInfo {
         let current = convertCurrentWeather(current)
         let hourly = hourly.forecast.map { convertHourlyForecast($0) }
-        let daily = daily.forecast.prefix(10).map { convertDailyForecast($0) }
+        let daily = daily.forecast.prefix(10).map { convertDailyForecast($0, timezone: location.timezone) }
 
         return SourcedWeatherInfo(
             source: .weatherKit,
@@ -135,9 +135,10 @@ final class WeatherKitService: WeatherServiceProtocol {
     }
 
     /// Convert WeatherKit DayWeather to domain model
-    private func convertDailyForecast(_ daily: WeatherKit.DayWeather) -> DailyForecast {
+    private func convertDailyForecast(_ daily: WeatherKit.DayWeather, timezone: TimeZone) -> DailyForecast {
         DailyForecast(
             date: daily.date,
+            timezone: timezone,
             highTemperature: daily.highTemperature.value,
             lowTemperature: daily.lowTemperature.value,
             condition: convertCondition(daily.condition),

@@ -12,17 +12,20 @@ struct WeatherData: Identifiable, Codable, Sendable {
     let id: UUID
     let location: Location
     let sources: [WeatherSource: SourcedWeatherInfo]
+    let sourceErrors: [WeatherSource: String]
     let fetchedAt: Date
 
     init(
         id: UUID = UUID(),
         location: Location,
         sources: [WeatherSource: SourcedWeatherInfo],
+        sourceErrors: [WeatherSource: String] = [:],
         fetchedAt: Date = Date()
     ) {
         self.id = id
         self.location = location
         self.sources = sources
+        self.sourceErrors = sourceErrors
         self.fetchedAt = fetchedAt
     }
 
@@ -71,6 +74,7 @@ struct SourcedWeatherInfo: Codable, Hashable, Sendable {
 /// Weather data source
 enum WeatherSource: String, Codable, CaseIterable, Hashable {
     case weatherKit = "Apple WeatherKit"
+    case googleWeather = "Google Weather"
     case noaa = "NOAA/NWS"
     case openWeatherMap = "OpenWeatherMap"
     case tomorrowIO = "Tomorrow.io"
@@ -80,6 +84,8 @@ enum WeatherSource: String, Codable, CaseIterable, Hashable {
         switch self {
         case .weatherKit:
             return "Weather data provided by Apple WeatherKit"
+        case .googleWeather:
+            return "Weather data provided by Google Weather API"
         case .noaa:
             return "Weather data provided by NOAA National Weather Service"
         case .openWeatherMap:
@@ -98,7 +104,9 @@ enum WeatherSource: String, Codable, CaseIterable, Hashable {
     var shortName: String {
         switch self {
         case .weatherKit:
-            return "WeatherKit"
+            return "Apple"
+        case .googleWeather:
+            return "Google"
         case .noaa:
             return "NOAA"
         case .openWeatherMap:

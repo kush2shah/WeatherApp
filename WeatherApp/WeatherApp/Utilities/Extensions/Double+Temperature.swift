@@ -32,11 +32,75 @@ extension Double {
 }
 
 /// Temperature unit preference
-enum TemperatureUnit: String, Codable {
+enum TemperatureUnit: String, CaseIterable, Codable {
     case celsius = "C"
     case fahrenheit = "F"
 
     var symbol: String {
         "°\(rawValue)"
+    }
+
+    var displayName: String {
+        switch self {
+        case .celsius: return "Celsius"
+        case .fahrenheit: return "Fahrenheit"
+        }
+    }
+}
+
+/// Wind speed unit options
+enum WindSpeedUnit: String, CaseIterable, Codable {
+    case milesPerHour = "mph"
+    case kilometersPerHour = "kmh"
+    case metersPerSecond = "ms"
+
+    var symbol: String {
+        switch self {
+        case .milesPerHour: return "mph"
+        case .kilometersPerHour: return "km/h"
+        case .metersPerSecond: return "m/s"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .milesPerHour: return "Miles per hour"
+        case .kilometersPerHour: return "Kilometers per hour"
+        case .metersPerSecond: return "Meters per second"
+        }
+    }
+}
+
+/// Pressure unit options
+enum PressureUnit: String, CaseIterable, Codable {
+    case hectopascals = "hPa"
+    case inchesOfMercury = "inHg"
+
+    var symbol: String {
+        rawValue
+    }
+
+    var displayName: String {
+        switch self {
+        case .hectopascals: return "Hectopascals"
+        case .inchesOfMercury: return "Inches of Mercury"
+        }
+    }
+}
+
+/// Visibility unit options
+enum VisibilityUnit: String, CaseIterable, Codable {
+    case kilometers = "km"
+    case miles = "mi"
+
+    var symbol: String {
+        rawValue
+    }
+
+    var displayName: String {
+        switch self {
+        case .kilometers: return "Kilometers"
+        case .miles: return "Miles"
+        }
     }
 }

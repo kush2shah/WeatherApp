@@ -6,6 +6,7 @@ A comprehensive iOS weather app that aggregates data from multiple sources and p
 
 - **Multi-API Integration**: Fetches weather data from:
   - Apple WeatherKit (primary, global)
+  - Google Weather (global, optional with API key)
   - NOAA/NWS (free, US-only)
   - OpenWeatherMap (global, optional with API key)
   - Tomorrow.io (global, optional with API key)
@@ -52,6 +53,10 @@ To enable additional weather sources, add API keys:
 
 2. Add your API keys to `.env`:
    ```bash
+   # Google Weather API Key (optional)
+   # Get from: Google Cloud Console
+   GOOGLE_WEATHER_API_KEY=your_key_here
+
    # OpenWeatherMap API Key (optional)
    # Sign up at: https://openweathermap.org/api
    OWM_API_KEY=your_key_here
@@ -63,7 +68,7 @@ To enable additional weather sources, add API keys:
 
 3. Set environment variables in Xcode:
    - Edit Scheme → Run → Arguments → Environment Variables
-   - Add `OWM_API_KEY` and `TOMORROW_API_KEY`
+   - Add `GOOGLE_WEATHER_API_KEY`, `OWM_API_KEY`, and `TOMORROW_API_KEY`
 
 **Note**: The app works with just WeatherKit and NOAA. Additional sources are optional.
 
@@ -86,6 +91,7 @@ WeatherAggregator
     ↓
 WeatherServiceProtocol implementations
     → WeatherKitService
+    → GoogleWeatherService
     → NOAAWeatherService
     → OpenWeatherMapService
     → TomorrowIOService
@@ -126,6 +132,7 @@ Utilities/            # Extensions, helpers, constants
 ### Services
 
 - **WeatherKitService**: Apple WeatherKit integration
+- **GoogleWeatherService**: Google Weather API integration
 - **NOAAWeatherService**: NOAA/NWS API integration
 - **OpenWeatherMapService**: OpenWeatherMap API integration
 - **TomorrowIOService**: Tomorrow.io API integration
@@ -151,9 +158,14 @@ Utilities/            # Extensions, helpers, constants
 ## API Rate Limits
 
 - **WeatherKit**: 500,000 calls/month (Apple Developer Program)
+- **Google Weather**: Varies by plan (requires Google Cloud account)
 - **NOAA**: No rate limit (free, US-only)
 - **OpenWeatherMap**: 1,000 calls/day (free tier)
 - **Tomorrow.io**: 500 calls/day, 25 calls/hour (free tier)
+
+## Known Limitations
+
+- **OpenWeatherMap**: Hourly forecasts are provided in 3-hour intervals instead of true hourly data. The app displays these as-is without interpolation.
 
 ## License
 
@@ -163,6 +175,7 @@ This project is a demonstration app. Not for commercial use.
 
 Weather data provided by:
 - Apple WeatherKit
+- Google Weather
 - NOAA National Weather Service
 - OpenWeatherMap
 - Tomorrow.io

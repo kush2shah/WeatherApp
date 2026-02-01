@@ -11,11 +11,28 @@ import SwiftUI
 struct WeatherIconView: View {
     let condition: WeatherCondition
     let size: CGFloat
+    var isNight: Bool = false
 
     var body: some View {
-        Image(systemName: condition.sfSymbolName)
+        Image(systemName: symbolName)
             .symbolRenderingMode(.multicolor)
             .font(.system(size: size))
+    }
+
+    private var symbolName: String {
+        guard isNight else { return condition.sfSymbolName }
+
+        // Night variants for conditions that change appearance
+        switch condition {
+        case .clear:
+            return "moon.stars.fill"
+        case .partlyCloudy:
+            return "cloud.moon.fill"
+        case .haze:
+            return "moon.haze.fill"
+        default:
+            return condition.sfSymbolName
+        }
     }
 }
 

@@ -64,7 +64,7 @@ actor NOAAWeatherService: WeatherServiceProtocol {
         let hourlyForecasts = hourly.properties.periods.prefix(24).map { convertHourlyForecast($0) }
 
         // Convert daily periods (NOAA returns day/night pairs)
-        let dailyForecasts = convertDailyForecasts(forecast.properties.periods)
+        let dailyForecasts = convertDailyForecasts(forecast.properties.periods, timezone: location.timezone)
 
         return SourcedWeatherInfo(
             source: .noaa,
@@ -109,7 +109,7 @@ actor NOAAWeatherService: WeatherServiceProtocol {
     }
 
     /// Convert NOAA daily periods (combine day/night pairs)
-    private func convertDailyForecasts(_ periods: [NOAAPeriod]) -> [DailyForecast] {
+    private func convertDailyForecasts(_ periods: [NOAAPeriod], timezone: TimeZone) -> [DailyForecast] {
         var dailyForecasts: [DailyForecast] = []
         var i = 0
 
@@ -132,6 +132,7 @@ actor NOAAWeatherService: WeatherServiceProtocol {
 
             let daily = DailyForecast(
                 date: timestamp,
+                timezone: timezone,
                 highTemperature: max(high, low),
                 lowTemperature: min(high, low),
                 condition: period.weatherCondition,

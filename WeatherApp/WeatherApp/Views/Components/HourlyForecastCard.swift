@@ -11,11 +11,58 @@ import SwiftUI
 struct HourlyForecastCard: View {
     let forecasts: [HourlyForecast]
     var timezone: TimeZone = .current
+    var sunrise: Date? = nil
+    var sunset: Date? = nil
 
     /// Filter forecasts to start from current hour
     private var filteredForecasts: [HourlyForecast] {
         let now = Date()
         return forecasts.filter { $0.timestamp >= now }
+    }
+
+    /// Timeline items including hourly forecasts and sun events
+    private enum TimelineItem: Identifiable {
+        case hour(HourlyForecast)
+        case sunrise(Date)
+        case sunset(Date)
+
+        var id: String {
+            switch self {
+            case .hour(let h): return h.id.uuidString
+            case .sunrise(let d): return "sunrise-\(d.timeIntervalSince1970)"
+            case .sunset(let d): return "sunset-\(d.timeIntervalSince1970)"
+            }
+        }
+
+        var sortDate: Date {
+            switch self {
+            case .hour(let h): return h.timestamp
+            case .sunrise(let d): return d
+            case .sunset(let d): return d
+            }
+        }
+    }
+
+    private var timelineItems: [TimelineItem] {
+        let filtered = filteredForecasts.prefix(24)
+        var items: [TimelineItem] = filtered.map { .hour($0) }
+
+        guard let firstHour = filtered.first?.timestamp,
+              let lastHour = filtered.last?.timestamp else {
+            return items
+        }
+
+        // Add sunrise if within the visible hours
+        if let sunrise = sunrise, sunrise >= firstHour && sunrise <= lastHour {
+            items.append(.sunrise(sunrise))
+        }
+
+        // Add sunset if within the visible hours
+        if let sunset = sunset, sunset >= firstHour && sunset <= lastHour {
+            items.append(.sunset(sunset))
+        }
+
+        return items.sorted { $0.sortDate < $1.sortDate }
     }
 
     var body: some View {
@@ -28,8 +75,20 @@ struct HourlyForecastCard: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 20) {
-                    ForEach(filteredForecasts.prefix(24)) { forecast in
-                        HourlyForecastItem(forecast: forecast, timezone: timezone)
+                    ForEach(timelineItems) { item in
+                        switch item {
+                        case .hour(let forecast):
+                            HourlyForecastItem(
+                                forecast: forecast,
+                                timezone: timezone,
+                                sunrise: sunrise,
+                                sunset: sunset
+                            )
+                        case .sunrise(let time):
+                            SunEventItem(isSunrise: true, time: time, timezone: timezone)
+                        case .sunset(let time):
+                            SunEventItem(isSunrise: false, time: time, timezone: timezone)
+                        }
                     }
                 }
                 .padding(.horizontal, 24)
@@ -48,6 +107,30 @@ struct HourlyForecastCard: View {
 struct HourlyForecastItem: View {
     let forecast: HourlyForecast
     let timezone: TimeZone
+    var sunrise: Date? = nil
+    var sunset: Date? = nil
+
+    /// Check if this hour is nighttime by comparing time-of-day only
+    private var isNight: Bool {
+        guard let sunrise = sunrise, let sunset = sunset else { return false }
+
+        var calendar = Calendar.current
+        calendar.timeZone = timezone
+
+        // Extract hour and minute components for comparison
+        let forecastComponents = calendar.dateComponents([.hour, .minute], from: forecast.timestamp)
+        let sunriseComponents = calendar.dateComponents([.hour, .minute], from: sunrise)
+        let sunsetComponents = calendar.dateComponents([.hour, .minute], from: sunset)
+
+        guard let forecastMinutes = forecastComponents.hour.map({ $0 * 60 + (forecastComponents.minute ?? 0) }),
+              let sunriseMinutes = sunriseComponents.hour.map({ $0 * 60 + (sunriseComponents.minute ?? 0) }),
+              let sunsetMinutes = sunsetComponents.hour.map({ $0 * 60 + (sunsetComponents.minute ?? 0) }) else {
+            return false
+        }
+
+        // Night = before sunrise OR at/after sunset
+        return forecastMinutes < sunriseMinutes || forecastMinutes >= sunsetMinutes
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -58,7 +141,7 @@ struct HourlyForecastItem: View {
                 .foregroundStyle(.primary)
 
             // Icon
-            WeatherIconView(condition: forecast.condition, size: 28)
+            WeatherIconView(condition: forecast.condition, size: 28, isNight: isNight)
                 .frame(height: 32)
                 .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
 
@@ -67,7 +150,7 @@ struct HourlyForecastItem: View {
                 .font(.system(.callout, design: .rounded))
                 .fontWeight(.semibold)
                 .foregroundStyle(.primary)
-            
+
             // Precip chance if significant
             if forecast.precipitationPercentage > 10 {
                 Text("\(forecast.precipitationPercentage)%")
@@ -82,6 +165,42 @@ struct HourlyForecastItem: View {
         formatter.timeZone = timezone
         formatter.dateFormat = "h a"
         return formatter.string(from: forecast.timestamp)
+    }
+}
+
+/// Sunrise or sunset marker for the hourly timeline
+struct SunEventItem: View {
+    let isSunrise: Bool
+    let time: Date
+    let timezone: TimeZone
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Time
+            Text(formattedTime)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.orange)
+
+            // Icon
+            Image(systemName: isSunrise ? "sunrise.fill" : "sunset.fill")
+                .symbolRenderingMode(.multicolor)
+                .font(.system(size: 28))
+                .frame(height: 32)
+
+            // Label
+            Text(isSunrise ? "Sunrise" : "Sunset")
+                .font(.system(.caption2, design: .rounded))
+                .fontWeight(.semibold)
+                .foregroundStyle(.orange)
+        }
+    }
+
+    private var formattedTime: String {
+        let formatter = DateFormatter()
+        formatter.timeZone = timezone
+        formatter.dateFormat = "h:mm"
+        return formatter.string(from: time)
     }
 }
 
