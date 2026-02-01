@@ -123,9 +123,10 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Copy relevant headers (excluding auth headers)
+	// Copy relevant headers (excluding auth and encoding headers)
 	for key, values := range r.Header {
-		if key == "X-Api-Key" || key == "Authorization" {
+		// Skip authentication and compression headers
+		if key == "X-Api-Key" || key == "Authorization" || key == "Accept-Encoding" {
 			continue
 		}
 		for _, value := range values {
