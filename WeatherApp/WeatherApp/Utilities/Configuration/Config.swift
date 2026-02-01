@@ -9,6 +9,8 @@ import Foundation
 
 /// Application configuration
 enum Config {
+    private static let infoDict = Bundle.main.infoDictionary ?? [:]
+
     /// OpenWeatherMap API key
     /// Sign up at: https://openweathermap.org/api
     /// Free tier: 1,000 calls/day
@@ -48,6 +50,10 @@ enum Config {
         // Fallback to hardcoded value (for development only - never commit this!)
         return ""
     }()
+
+    // Cloud Run Proxy Configuration
+    static let cloudRunProxyAPIKey = infoDict["CLOUD_RUN_PROXY_API_KEY"] as? String ?? ""
+    static let cloudRunProxyURL = infoDict["CLOUD_RUN_PROXY_URL"] as? String ?? ""
 
     /// Check which weather sources are enabled
     static var enabledSources: [WeatherSource] {
