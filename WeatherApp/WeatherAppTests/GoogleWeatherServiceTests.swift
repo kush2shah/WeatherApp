@@ -28,14 +28,14 @@ final class GoogleWeatherServiceProxyTests: XCTestCase {
         let service = GoogleWeatherService()
         let location = Location(
             name: "San Francisco",
-            coordinate: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            clCoordinate: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
             timezone: .current
         )
 
         let weather = try await service.fetchWeather(for: location)
 
         // Verify we got valid weather data
-        XCTAssertEqual(weather.source, .googleWeather)
+        XCTAssertEqual(weather.source, WeatherSource.googleWeather)
         XCTAssertNotNil(weather.current)
         XCTAssertFalse(weather.hourly.isEmpty)
         XCTAssertFalse(weather.daily.isEmpty)

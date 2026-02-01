@@ -10,43 +10,65 @@ import Foundation
 // MARK: - Common Types
 
 struct GWTemperature: Codable, Sendable {
-    let value: Double
+    let degrees: Double
     let unit: String?
 }
 
 struct GWWind: Codable, Sendable {
-    let speed: GWValue?
+    let speed: GWSpeed?
     let direction: GWDirection?
-    let gust: GWValue?
+    let gust: GWSpeed?
 }
 
-struct GWValue: Codable, Sendable {
+struct GWSpeed: Codable, Sendable {
     let value: Double
     let unit: String?
 }
 
 struct GWDirection: Codable, Sendable {
     let degrees: Int
+    let cardinal: String?
 }
 
 struct GWPrecipitation: Codable, Sendable {
-    let probability: Int?
-    let amount: GWValue?
+    let probability: GWProbability?
+    let snowQpf: GWQuantity?
+    let qpf: GWQuantity?
+}
+
+struct GWProbability: Codable, Sendable {
+    let percent: Int
+    let type: String?
+}
+
+struct GWQuantity: Codable, Sendable {
+    let quantity: Double
+    let unit: String?
+}
+
+struct GWIceThickness: Codable, Sendable {
+    let thickness: Double
+    let unit: String?
 }
 
 struct GWWeatherCondition: Codable, Sendable {
-    let code: String
-    let description: String
+    let type: String
+    let description: GWLocalizedText
+    let iconBaseUri: String?
+}
+
+struct GWLocalizedText: Codable, Sendable {
+    let text: String
+    let languageCode: String?
 }
 
 struct GWVisibility: Codable, Sendable {
-    let value: Double
+    let distance: Double
     let unit: String?
 }
 
 struct GWAirPressure: Codable, Sendable {
-    let value: Double
-    let unit: String?
+    let meanSeaLevelMillibars: Double
 }
 
 struct GWTimeZone: Codable, Sendable {
@@ -81,8 +103,8 @@ struct GWCurrentConditionsHistory: Codable, Sendable {
     let temperatureChange: GWTemperature?
     let maxTemperature: GWTemperature?
     let minTemperature: GWTemperature?
-    let snowQpf: GWValue?
-    let qpf: GWValue?
+    let snowQpf: GWQuantity?
+    let qpf: GWQuantity?
 }
 
 // MARK: - Hourly Forecast Response
@@ -111,7 +133,7 @@ struct GWForecastHour: Codable, Sendable {
     let uvIndex: Int?
     let thunderstormProbability: Int?
     let cloudCover: Int?
-    let iceThickness: GWValue?
+    let iceThickness: GWIceThickness?
 }
 
 struct GWInterval: Codable, Sendable {
@@ -154,7 +176,7 @@ struct GWForecastDayPart: Codable, Sendable {
     let relativeHumidity: Int?
     let uvIndex: Int?
     let cloudCover: Int?
-    let iceThickness: GWValue?
+    let iceThickness: GWIceThickness?
 }
 
 struct GWSunEvents: Codable, Sendable {

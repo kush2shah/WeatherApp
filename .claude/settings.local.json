@@ -38,7 +38,11 @@
       "Bash(gcloud logging read:*)",
       "Bash(gcloud beta builds log:*)",
       "Bash(gcloud projects add-iam-policy-binding:*)",
-      "Bash(gcloud run services logs read:*)"
+      "Bash(gcloud run services logs read:*)",
+      "Bash(git branch:*)",
+      "Bash(curl:*)",
+      "Bash(gcloud run logs read:*)",
+      "mcp__serena__find_file"
     ]
   }
 }

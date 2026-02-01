@@ -81,18 +81,18 @@ actor GoogleWeatherService: WeatherServiceProtocol {
 
     private func convertCurrentWeather(_ response: GWCurrentConditionsResponse) -> CurrentWeather {
         CurrentWeather(
-            temperature: response.temperature?.value ?? 0,
-            apparentTemperature: response.feelsLikeTemperature?.value ?? response.temperature?.value ?? 0,
-            condition: mapWeatherCondition(response.weatherCondition?.code),
-            conditionDescription: response.weatherCondition?.description ?? "Unknown",
+            temperature: response.temperature?.degrees ?? 0,
+            apparentTemperature: response.feelsLikeTemperature?.degrees ?? response.temperature?.degrees ?? 0,
+            condition: mapWeatherCondition(response.weatherCondition?.type),
+            conditionDescription: response.weatherCondition?.description.text ?? "Unknown",
             humidity: Double(response.relativeHumidity ?? 0) / 100.0,
-            pressure: response.airPressure?.value ?? 1013.25,
+            pressure: response.airPressure?.meanSeaLevelMillibars ?? 1013.25,
             windSpeed: response.wind?.speed?.value ?? 0,
             windDirection: response.wind?.direction.map { Double($0.degrees) },
             uvIndex: response.uvIndex.map { Double($0) },
-            visibility: response.visibility?.value,
+            visibility: response.visibility?.distance,
             cloudCover: Double(response.cloudCover ?? 0) / 100.0,
-            dewPoint: response.dewPoint?.value,
+            dewPoint: response.dewPoint?.degrees,
             timestamp: parseTimestamp(response.currentTime) ?? Date()
         )
     }
@@ -104,11 +104,11 @@ actor GoogleWeatherService: WeatherServiceProtocol {
 
         return HourlyForecast(
             timestamp: timestamp,
-            temperature: hour.temperature?.value ?? 0,
-            apparentTemperature: hour.feelsLikeTemperature?.value ?? hour.temperature?.value ?? 0,
-            condition: mapWeatherCondition(hour.weatherCondition?.code),
-            precipitationChance: Double(hour.precipitation?.probability ?? 0) / 100.0,
-            precipitationAmount: hour.precipitation?.amount?.value,
+            temperature: hour.temperature?.degrees ?? 0,
+            apparentTemperature: hour.feelsLikeTemperature?.degrees ?? hour.temperature?.degrees ?? 0,
+            condition: mapWeatherCondition(hour.weatherCondition?.type),
+            precipitationChance: Double(hour.precipitation?.probability?.percent ?? 0) / 100.0,
+            precipitationAmount: hour.precipitation?.qpf?.quantity,
             humidity: Double(hour.relativeHumidity ?? 0) / 100.0,
             windSpeed: hour.wind?.speed?.value,
             windDirection: hour.wind?.direction.map { Double($0.degrees) },
@@ -135,12 +135,12 @@ actor GoogleWeatherService: WeatherServiceProtocol {
         return DailyForecast(
             date: date,
             timezone: timezone,
-            highTemperature: day.maxTemperature?.value ?? 0,
-            lowTemperature: day.minTemperature?.value ?? 0,
-            condition: mapWeatherCondition(day.daytimeForecast?.weatherCondition?.code),
-            conditionDescription: day.daytimeForecast?.weatherCondition?.description ?? "Unknown",
-            precipitationChance: Double(day.daytimeForecast?.precipitation?.probability ?? 0) / 100.0,
-            precipitationAmount: day.daytimeForecast?.precipitation?.amount?.value,
+            highTemperature: day.maxTemperature?.degrees ?? 0,
+            lowTemperature: day.minTemperature?.degrees ?? 0,
+            condition: mapWeatherCondition(day.daytimeForecast?.weatherCondition?.type),
+            conditionDescription: day.daytimeForecast?.weatherCondition?.description.text ?? "Unknown",
+            precipitationChance: Double(day.daytimeForecast?.precipitation?.probability?.percent ?? 0) / 100.0,
+            precipitationAmount: day.daytimeForecast?.precipitation?.qpf?.quantity,
             sunrise: day.sunEvents?.sunriseTime.flatMap(parseTimestamp),
             sunset: day.sunEvents?.sunsetTime.flatMap(parseTimestamp),
             moonPhase: mapMoonPhase(day.moonEvents?.moonPhase),
@@ -153,6 +153,14 @@ actor GoogleWeatherService: WeatherServiceProtocol {
     private func parseTimestamp(_ string: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        // Try with fractional seconds first (current conditions format)
+        if let date = formatter.date(from: string) {
+            return date
+        }
+
+        // Fallback: try without fractional seconds (hourly/daily format)
+        formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: string)
     }
 
