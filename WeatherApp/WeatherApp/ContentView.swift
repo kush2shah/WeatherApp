@@ -23,7 +23,10 @@ struct ContentView: View {
                                 selectedSource: Binding(
                                     get: { selectedSource },
                                     set: { viewModel.selectedSource = $0 }
-                                )
+                                ),
+                                onRefreshSource: { source in
+                                    await viewModel.refreshSource(source)
+                                }
                             )
                         }
                     } else if let error = viewModel?.error {

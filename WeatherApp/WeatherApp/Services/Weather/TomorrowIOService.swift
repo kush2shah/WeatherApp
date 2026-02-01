@@ -27,6 +27,7 @@ actor TomorrowIOService: WeatherServiceProtocol {
 
     func fetchWeather(for location: Location) async throws -> SourcedWeatherInfo {
         guard isAvailable else {
+            print("[TomorrowIO] API key not configured")
             throw APIError.unauthorized
         }
 
@@ -49,11 +50,19 @@ actor TomorrowIOService: WeatherServiceProtocol {
             "weatherCode"
         ].joined(separator: ",")
 
-        let url = "\(baseURL)/timelines?location=\(lat),\(lon)&fields=\(fields)&timesteps=current,1h,1d&apikey=\(apiKey)&units=metric"
+        let url = "\(baseURL)/timelines?location=\(lat),\(lon)&fields=\(fields)&timesteps=current,1h,1d&apikey=***&units=metric"
+        print("[TomorrowIO] Requesting: \(url)")
 
-        let response: TomorrowIOTimelineResponse = try await networkClient.fetch(url: url)
+        let actualURL = "\(baseURL)/timelines?location=\(lat),\(lon)&fields=\(fields)&timesteps=current,1h,1d&apikey=\(apiKey)&units=metric"
 
-        return convertToSourcedWeatherInfo(response, location: location)
+        do {
+            let response: TomorrowIOTimelineResponse = try await networkClient.fetch(url: actualURL)
+            print("[TomorrowIO] Received response with \(response.data.timelines.count) timelines")
+            return convertToSourcedWeatherInfo(response, location: location)
+        } catch {
+            print("[TomorrowIO] Request failed: \(error)")
+            throw error
+        }
     }
 
     // MARK: - Private Helpers

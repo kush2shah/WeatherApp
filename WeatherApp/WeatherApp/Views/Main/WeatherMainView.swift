@@ -12,6 +12,7 @@ struct WeatherMainView: View {
     let weatherData: WeatherData
     @Binding var selectedSource: WeatherSource
     @State private var showComparison = false
+    let onRefreshSource: ((WeatherSource) async -> Void)?
 
     /// Get sunrise from any source that has it (fallback for sources without sun data)
     private var todaySunrise: Date? {
@@ -73,6 +74,15 @@ struct WeatherMainView: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal, 24)
+                }
+
+                // Source error banner
+                if !weatherData.sourceErrors.isEmpty, let onRefreshSource = onRefreshSource {
+                    SourceErrorBanner(sourceErrors: weatherData.sourceErrors) { source in
+                        Task {
+                            await onRefreshSource(source)
+                        }
+                    }
                 }
 
                 // Current weather

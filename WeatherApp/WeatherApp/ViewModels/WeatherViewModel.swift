@@ -40,23 +40,28 @@ final class WeatherViewModel {
         isLoading = true
         error = nil
 
-        var sources = await weatherAggregator.fetchAllAvailableWeather(for: location)
+        let result = await weatherAggregator.fetchAllAvailableWeather(for: location)
+        var sources = result.sources
+        var sourceErrors = result.errors
 
         // If fetch failed and we have a locality, try generalizing
         if sources.isEmpty, let city = location.locality {
             print("Initial fetch failed for \(location.name). Attempting to generalize to \(city)...")
             do {
                 let generalizedLocation = try await geocodingService.geocode(address: city)
-                sources = await weatherAggregator.fetchAllAvailableWeather(for: generalizedLocation)
-                
+                let generalizedResult = await weatherAggregator.fetchAllAvailableWeather(for: generalizedLocation)
+                sources = generalizedResult.sources
+                sourceErrors = generalizedResult.errors
+
                 if !sources.isEmpty {
                     print("Generalized fetch succeeded for \(city)")
-                    
+
                     let data = WeatherData(
                         location: generalizedLocation,
-                        sources: sources
+                        sources: sources,
+                        sourceErrors: sourceErrors
                     )
-                    
+
                     weatherData = data
                     selectedSource = data.primarySource
                     saveLocation(generalizedLocation)
@@ -76,7 +81,8 @@ final class WeatherViewModel {
 
         let data = WeatherData(
             location: location,
-            sources: sources
+            sources: sources,
+            sourceErrors: sourceErrors
         )
 
         weatherData = data
@@ -92,6 +98,43 @@ final class WeatherViewModel {
     func refresh() async {
         guard let location = weatherData?.location else { return }
         await fetchWeather(for: location)
+    }
+
+    /// Refresh weather from a specific source
+    func refreshSource(_ source: WeatherSource) async {
+        guard let location = weatherData?.location else { return }
+
+        do {
+            print("[\(source.rawValue)] Manually refreshing...")
+            let weather = try await weatherAggregator.fetchWeather(from: source, for: location)
+
+            // Update weatherData with new source data
+            var updatedSources = weatherData?.sources ?? [:]
+            updatedSources[source] = weather
+
+            var updatedErrors = weatherData?.sourceErrors ?? [:]
+            updatedErrors.removeValue(forKey: source)
+
+            weatherData = WeatherData(
+                location: location,
+                sources: updatedSources,
+                sourceErrors: updatedErrors
+            )
+
+            print("[\(source.rawValue)] Refresh successful")
+        } catch {
+            print("[\(source.rawValue)] Refresh failed: \(error)")
+
+            // Update error in weatherData
+            var updatedErrors = weatherData?.sourceErrors ?? [:]
+            updatedErrors[source] = error.localizedDescription
+
+            weatherData = WeatherData(
+                location: location,
+                sources: weatherData?.sources ?? [:],
+                sourceErrors: updatedErrors
+            )
+        }
     }
 
     /// Get current sourced weather

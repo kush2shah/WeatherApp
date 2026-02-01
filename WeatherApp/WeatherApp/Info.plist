@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>OWM_API_KEY</key>
+	<string>eb35501fe14b0bfeeb997657ed173e6c</string>
+	<key>TOMORROW_API_KEY</key>
+	<string>kr9vSoHmBhBtWMI2qckwhAoiAUfO1775</string>
+	<key>GCP_API_KEY</key>
+	<string>AIzaSyCvF3OepSLh2yTW2Ykud1HSfJoPY8AjmaU</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

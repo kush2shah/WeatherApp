@@ -15,11 +15,14 @@ enum Config {
     /// Sign up at: https://openweathermap.org/api
     /// Free tier: 1,000 calls/day
     static let openWeatherMapAPIKey: String = {
-        // Try environment variable first
+        // Try Info.plist first (works when running standalone)
+        if let key = Bundle.main.object(forInfoDictionaryKey: "OWM_API_KEY") as? String, !key.isEmpty {
+            return key
+        }
+        // Fallback to environment variable (for local development/testing)
         if let key = ProcessInfo.processInfo.environment["OWM_API_KEY"], !key.isEmpty {
             return key
         }
-        // Fallback to hardcoded value (for development only - never commit this!)
         return ""
     }()
 
@@ -27,11 +30,14 @@ enum Config {
     /// Sign up at: https://www.tomorrow.io/weather-api/
     /// Free tier: 500 calls/day, 25 calls/hour
     static let tomorrowIOAPIKey: String = {
-        // Try environment variable first
+        // Try Info.plist first (works when running standalone)
+        if let key = Bundle.main.object(forInfoDictionaryKey: "TOMORROW_API_KEY") as? String, !key.isEmpty {
+            return key
+        }
+        // Fallback to environment variable (for local development/testing)
         if let key = ProcessInfo.processInfo.environment["TOMORROW_API_KEY"], !key.isEmpty {
             return key
         }
-        // Fallback to hardcoded value (for development only - never commit this!)
         return ""
     }()
 

@@ -23,11 +23,14 @@ final class ComparisonViewModel {
         var humidity: [WeatherSource: [DataPoint]] = [:]
 
         let now = Date()
+        let endTime = now.addingTimeInterval(24 * 3600) // 24 hours from now
 
         // Extract data from each source
         for (source, weather) in weatherData.sources {
-            // Filter to future hours first, then take 24
-            let futureHourly = weather.hourly.filter { $0.timestamp >= now }.prefix(24)
+            // Filter to 24-hour time window (not count) to normalize across different intervals
+            let futureHourly = weather.hourly.filter {
+                $0.timestamp >= now && $0.timestamp <= endTime
+            }
 
             // Temperature data points
             temperatures[source] = futureHourly.map { forecast in

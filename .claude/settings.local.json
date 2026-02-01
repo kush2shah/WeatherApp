@@ -15,7 +15,30 @@
       "mcp__serena__think_about_collected_information",
       "mcp__serena__think_about_task_adherence",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add hourly timeline section to DailyDetailView\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add hourly timeline section to DailyDetailView\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "mcp__context7__resolve-library-id",
+      "Bash(git worktree:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: Add Google Weather API integration plan\n\nDetailed implementation plan with 9 tasks covering:\n- Domain model updates\n- API configuration\n- Response models\n- Service implementation\n- Aggregator integration\n- Testing and documentation\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(git commit:*)",
+      "mcp__serena__search_for_pattern",
+      "Bash(export PATH=\"/opt/homebrew/opt/go/bin:$PATH\")",
+      "Bash(go version:*)",
+      "Bash(pkill:*)",
+      "Bash(gcloud services enable:*)",
+      "Bash(gcloud run deploy:*)",
+      "Bash(gcloud builds submit:*)",
+      "Bash(gsutil iam ch:*)",
+      "Bash(gcloud builds log:*)",
+      "Bash(gcloud builds describe:*)",
+      "Bash(gcloud run services list:*)",
+      "Bash(gcloud artifacts repositories list:*)",
+      "Bash(gcloud builds list:*)",
+      "Bash(gcloud logging read:*)",
+      "Bash(gcloud beta builds log:*)",
+      "Bash(gcloud projects add-iam-policy-binding:*)",
+      "Bash(gcloud run services logs read:*)"
     ]
   }
 }
