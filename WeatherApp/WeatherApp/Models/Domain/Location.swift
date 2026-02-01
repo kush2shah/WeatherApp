@@ -15,6 +15,7 @@ struct Location: Identifiable, Codable, Hashable, Sendable {
     let coordinate: Coordinate
     let timezone: TimeZone
     let country: String?
+    let isoCountryCode: String? // ISO 3166-1 alpha-2 (e.g., "US", "GB")
     let administrativeArea: String? // State/Province
     let locality: String? // City
 
@@ -24,6 +25,7 @@ struct Location: Identifiable, Codable, Hashable, Sendable {
         coordinate: Coordinate,
         timezone: TimeZone = .current,
         country: String? = nil,
+        isoCountryCode: String? = nil,
         administrativeArea: String? = nil,
         locality: String? = nil
     ) {
@@ -32,6 +34,7 @@ struct Location: Identifiable, Codable, Hashable, Sendable {
         self.coordinate = coordinate
         self.timezone = timezone
         self.country = country
+        self.isoCountryCode = isoCountryCode
         self.administrativeArea = administrativeArea
         self.locality = locality
     }
@@ -42,6 +45,7 @@ struct Location: Identifiable, Codable, Hashable, Sendable {
         clCoordinate: CLLocationCoordinate2D,
         timezone: TimeZone = .current,
         country: String? = nil,
+        isoCountryCode: String? = nil,
         administrativeArea: String? = nil,
         locality: String? = nil
     ) {
@@ -53,6 +57,7 @@ struct Location: Identifiable, Codable, Hashable, Sendable {
             ),
             timezone: timezone,
             country: country,
+            isoCountryCode: isoCountryCode,
             administrativeArea: administrativeArea,
             locality: locality
         )

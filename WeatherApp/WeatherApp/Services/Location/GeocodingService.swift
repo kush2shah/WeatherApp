@@ -109,6 +109,7 @@ actor GeocodingService: GeocodingServiceProtocol {
             ),
             timezone: placemark.timeZone ?? .current,
             country: placemark.country,
+            isoCountryCode: placemark.isoCountryCode,
             administrativeArea: placemark.administrativeArea,
             locality: placemark.locality
         )
