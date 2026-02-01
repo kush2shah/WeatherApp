@@ -18,7 +18,7 @@ actor GoogleWeatherService: WeatherServiceProtocol {
     }
 
     nonisolated var isAvailable: Bool {
-        !Config.googleWeatherAPIKey.isEmpty
+        !Config.cloudRunProxyURL.isEmpty && !Config.cloudRunProxyAPIKey.isEmpty
     }
 
     nonisolated func checkAvailability(for location: Location) -> Bool {
@@ -35,18 +35,19 @@ actor GoogleWeatherService: WeatherServiceProtocol {
         let lon = location.coordinate.longitude
 
         // Build request URLs
-        let baseURL = "https://weather.googleapis.com/v1"
+        let baseURL = Config.cloudRunProxyURL
         let locationParam = "location.latitude=\(lat)&location.longitude=\(lon)"
-        let keyParam = "key=\(apiKey)"
 
-        let currentURL = "\(baseURL)/currentConditions:lookup?\(locationParam)&\(keyParam)"
-        let hourlyURL = "\(baseURL)/forecast/hours:lookup?\(locationParam)&hours=240&\(keyParam)"
-        let dailyURL = "\(baseURL)/forecast/days:lookup?\(locationParam)&days=10&\(keyParam)"
+        let currentURL = "\(baseURL)/v1/currentConditions:lookup?\(locationParam)"
+        let hourlyURL = "\(baseURL)/v1/forecast/hours:lookup?\(locationParam)&hours=240"
+        let dailyURL = "\(baseURL)/v1/forecast/days:lookup?\(locationParam)&days=10"
+
+        let headers = ["X-API-Key": Config.cloudRunProxyAPIKey]
 
         // Fetch all endpoints in parallel
-        async let currentTask: GWCurrentConditionsResponse = networkClient.fetch(url: currentURL)
-        async let hourlyTask: GWHourlyForecastResponse = networkClient.fetch(url: hourlyURL)
-        async let dailyTask: GWDailyForecastResponse = networkClient.fetch(url: dailyURL)
+        async let currentTask: GWCurrentConditionsResponse = networkClient.fetch(url: currentURL, headers: headers)
+        async let hourlyTask: GWHourlyForecastResponse = networkClient.fetch(url: hourlyURL, headers: headers)
+        async let dailyTask: GWDailyForecastResponse = networkClient.fetch(url: dailyURL, headers: headers)
 
         let (current, hourly, daily) = try await (currentTask, hourlyTask, dailyTask)
 
