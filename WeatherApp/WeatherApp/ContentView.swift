@@ -12,98 +12,51 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: WeatherViewModel?
     @State private var showSearch = false
+    @State private var selectedLocation: Location?
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        NavigationStack {
-                Group {
-                    if let viewModel = viewModel, let weatherData = viewModel.weatherData {
-                        if let selectedSource = viewModel.selectedSource {
-                            WeatherMainView(
-                                weatherData: weatherData,
-                                selectedSource: Binding(
-                                    get: { selectedSource },
-                                    set: { viewModel.selectedSource = $0 }
-                                ),
-                                onRefreshSource: { source in
-                                    await viewModel.refreshSource(source)
-                                }
-                            )
+        NavigationStack(path: $navigationPath) {
+            Group {
+                if let viewModel = viewModel, let weatherData = viewModel.weatherData {
+                    if let selectedSource = viewModel.selectedSource {
+                        weatherDetailView(weatherData: weatherData, selectedSource: selectedSource)
+                    }
+                } else if let error = viewModel?.error {
+                    errorView(error: error)
+                } else if viewModel?.isLoading == true {
+                    loadingView
+                } else {
+                    // Show launch view with saved locations
+                    LaunchView { location in
+                        Task {
+                            await handleLocationSelection(location)
                         }
-                    } else if let error = viewModel?.error {
-                        VStack(spacing: 20) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 60))
-                                .foregroundStyle(.yellow)
-
-                            Text("Something went wrong")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.primary)
-
-                            Text(error.localizedDescription)
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal)
-
-                            Button {
-                                Task {
-                                    await viewModel?.refresh()
-                                }
-                            } label: {
-                                Label("Try Again", systemImage: "arrow.clockwise")
-                                    .font(.headline)
-                                    .padding()
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                            .foregroundStyle(.primary)
-                        }
-                    } else if viewModel?.isLoading == true {
-                        ProgressView("Loading weather...")
-                            .tint(.primary)
-                            .foregroundStyle(.primary)
-                    } else {
-                        // Show search prompt
-                        VStack(spacing: 20) {
-                            Image(systemName: "cloud.sun.fill")
-                                .symbolRenderingMode(.multicolor)
-                                .font(.system(size: 80))
-                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-
-                            Text("Welcome to WeatherApp")
-                                .font(.title)
-                                .fontWeight(.bold)
-
-                            Text("Search for a location to get started")
-                                .foregroundStyle(.secondary)
-
-                            Button {
-                                showSearch = true
-                            } label: {
-                                Label("Search Location", systemImage: "magnifyingglass")
-                                    .font(.headline)
-                                    .padding()
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
+                    }
+                }
+            }
+            .toolbar {
+                if viewModel?.weatherData != nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            // Return to launch view
+                            viewModel?.weatherData = nil
+                            viewModel?.selectedSource = nil
+                        } label: {
+                            Label("Back", systemImage: "chevron.left")
                         }
                         .foregroundStyle(.primary)
                     }
-                }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        if viewModel?.weatherData != nil {
+
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 16) {
                             Button {
                                 showSearch = true
                             } label: {
                                 Label("Search", systemImage: "magnifyingglass")
                             }
                             .foregroundStyle(.primary)
-                        }
-                    }
 
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if viewModel?.weatherData != nil {
                             Button {
                                 Task {
                                     await viewModel?.refresh()
@@ -116,20 +69,104 @@ struct ContentView: View {
                         }
                     }
                 }
-                .sheet(isPresented: $showSearch) {
-                    LocationSearchView(modelContext: modelContext) { location in
-                        Task {
-                            await handleLocationSelection(location)
-                        }
+            }
+            .sheet(isPresented: $showSearch) {
+                LocationSearchView(modelContext: modelContext) { location in
+                    Task {
+                        await handleLocationSelection(location)
                     }
                 }
             }
+        }
         .onAppear {
             if viewModel == nil {
                 viewModel = WeatherViewModel(modelContext: modelContext)
             }
         }
     }
+
+    // MARK: - Subviews
+
+    @ViewBuilder
+    private func weatherDetailView(weatherData: WeatherData, selectedSource: WeatherSource) -> some View {
+        WeatherMainView(
+            weatherData: weatherData,
+            selectedSource: Binding(
+                get: { selectedSource },
+                set: { viewModel?.selectedSource = $0 }
+            ),
+            onRefreshSource: { source in
+                await viewModel?.refreshSource(source)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func errorView(error: Error) -> some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(.yellow)
+
+            Text("Something went wrong")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundStyle(.primary)
+
+            Text(error.localizedDescription)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+
+            HStack(spacing: 16) {
+                Button {
+                    viewModel?.error = nil
+                    viewModel?.weatherData = nil
+                } label: {
+                    Label("Go Back", systemImage: "chevron.left")
+                        .font(.headline)
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .foregroundStyle(.primary)
+
+                Button {
+                    Task {
+                        await viewModel?.refresh()
+                    }
+                } label: {
+                    Label("Try Again", systemImage: "arrow.clockwise")
+                        .font(.headline)
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .foregroundStyle(.primary)
+            }
+
+            Spacer()
+        }
+    }
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            ProgressView()
+                .scaleEffect(1.5)
+
+            Text("Loading weather...")
+                .font(.system(.headline, design: .rounded))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Actions
 
     private func handleLocationSelection(_ location: Location) async {
         await viewModel?.fetchWeather(for: location)
@@ -138,5 +175,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: SavedLocation.self, inMemory: true)
+        .modelContainer(for: [SavedLocation.self, CachedWeather.self, SearchHistory.self], inMemory: true)
 }

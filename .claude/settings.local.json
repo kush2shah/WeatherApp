@@ -42,7 +42,10 @@
       "Bash(git branch:*)",
       "Bash(curl:*)",
       "Bash(gcloud run logs read:*)",
-      "mcp__serena__find_file"
+      "mcp__serena__find_file",
+      "mcp__plugin_serena_serena__list_dir",
+      "mcp__plugin_serena_serena__activate_project",
+      "mcp__plugin_serena_serena__read_file"
     ]
   }
 }

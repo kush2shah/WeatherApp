@@ -40,7 +40,7 @@ actor GoogleWeatherService: WeatherServiceProtocol {
 
         let currentURL = "\(baseURL)/v1/currentConditions:lookup?\(locationParam)"
         let hourlyURL = "\(baseURL)/v1/forecast/hours:lookup?\(locationParam)&hours=240"
-        let dailyURL = "\(baseURL)/v1/forecast/days:lookup?\(locationParam)&days=10"
+        let dailyURL = "\(baseURL)/v1/forecast/days:lookup?\(locationParam)&days=10&pageSize=10"
 
         let headers = ["X-API-Key": Config.cloudRunProxyAPIKey]
 

@@ -150,9 +150,18 @@ final class WeatherViewModel {
 
     /// Save location to SwiftData
     private func saveLocation(_ location: Location) {
-        // Check if location already exists
+        // Check if location already exists by coordinates (not UUID)
+        let lat = location.coordinate.latitude
+        let lon = location.coordinate.longitude
+        let tolerance = 0.01 // ~1km tolerance
+
         let descriptor = FetchDescriptor<SavedLocation>(
-            predicate: #Predicate { $0.id == location.id }
+            predicate: #Predicate {
+                $0.latitude > lat - tolerance &&
+                $0.latitude < lat + tolerance &&
+                $0.longitude > lon - tolerance &&
+                $0.longitude < lon + tolerance
+            }
         )
 
         do {
