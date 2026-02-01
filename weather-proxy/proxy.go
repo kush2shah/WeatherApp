@@ -89,8 +89,8 @@ func (p *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use the path as-is (already starts with /v1/...)
-	path := r.URL.Path
+	// Strip /v1 prefix from path since googleWeatherAPIBase already includes it
+	path := strings.TrimPrefix(r.URL.Path, "/v1")
 
 	// Build Google Weather API URL
 	targetURL := googleWeatherAPIBase + path

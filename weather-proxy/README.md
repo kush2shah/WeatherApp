@@ -2,6 +2,10 @@
 
 Cloud Run proxy for Google Weather API with OAuth authentication and caching.
 
+## Production URL
+
+https://weather-proxy-777152718569.us-central1.run.app
+
 ## Local Development
 
 ```bash
