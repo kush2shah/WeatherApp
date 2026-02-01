@@ -16,9 +16,11 @@ actor NOAAWeatherService: WeatherServiceProtocol {
 
     nonisolated func checkAvailability(for location: Location) -> Bool {
         // NOAA only covers US territories
-        location.country == "US" ||
-        location.country == "United States" ||
-        location.country == nil // Assume US if country not specified
+        // Use ISO country code for locale-independent check
+        guard let isoCode = location.isoCountryCode?.uppercased() else {
+            return true // Assume US if country code not specified
+        }
+        return isoCode == "US"
     }
 
     func fetchWeather(for location: Location) async throws -> SourcedWeatherInfo {
