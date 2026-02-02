@@ -8,7 +8,7 @@
 import Foundation
 
 /// HTTP network client with retry logic
-actor NetworkClient {
+actor NetworkClient: NetworkClientProtocol {
     private let session: URLSession
     private let maxRetries: Int
     private let retryDelay: TimeInterval

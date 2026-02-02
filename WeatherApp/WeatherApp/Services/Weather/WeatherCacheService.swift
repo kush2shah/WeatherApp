@@ -10,7 +10,7 @@ import SwiftData
 
 /// Service for caching weather data
 @MainActor
-final class WeatherCacheService {
+final class WeatherCacheService: CachingServiceProtocol {
     private let modelContext: ModelContext
     private let cacheExpiration: TimeInterval
 

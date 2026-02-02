@@ -10,11 +10,15 @@ import Foundation
 /// Google Weather API service implementation
 actor GoogleWeatherService: WeatherServiceProtocol {
     let source: WeatherSource = .googleWeather
-    private let networkClient = NetworkClient()
+    private let networkClient: any NetworkClientProtocol
     private let apiKey: String
 
-    init(apiKey: String = Config.googleWeatherAPIKey) {
+    init(
+        apiKey: String = Config.googleWeatherAPIKey,
+        networkClient: any NetworkClientProtocol = NetworkClient()
+    ) {
         self.apiKey = apiKey
+        self.networkClient = networkClient
     }
 
     nonisolated var isAvailable: Bool {

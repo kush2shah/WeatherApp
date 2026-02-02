@@ -46,6 +46,40 @@ struct WeatherData: Identifiable, Codable, Sendable {
         }
         return availableSources.first
     }
+
+    /// Get today's sunrise, preferring the specified source but falling back to others
+    func todaySunrise(preferring source: WeatherSource) -> Date? {
+        // Try preferred source first
+        if let weather = sources[source],
+           let sunrise = weather.daily.first?.sunrise {
+            return sunrise
+        }
+        // Fallback: check all sources
+        for availableSource in availableSources {
+            if let weather = sources[availableSource],
+               let sunrise = weather.daily.first?.sunrise {
+                return sunrise
+            }
+        }
+        return nil
+    }
+
+    /// Get today's sunset, preferring the specified source but falling back to others
+    func todaySunset(preferring source: WeatherSource) -> Date? {
+        // Try preferred source first
+        if let weather = sources[source],
+           let sunset = weather.daily.first?.sunset {
+            return sunset
+        }
+        // Fallback: check all sources
+        for availableSource in availableSources {
+            if let weather = sources[availableSource],
+               let sunset = weather.daily.first?.sunset {
+                return sunset
+            }
+        }
+        return nil
+    }
 }
 
 /// Weather information from a specific source

@@ -10,11 +10,15 @@ import Foundation
 /// OpenWeatherMap service implementation
 actor OpenWeatherMapService: WeatherServiceProtocol {
     let source: WeatherSource = .openWeatherMap
-    private let networkClient = NetworkClient()
+    private let networkClient: any NetworkClientProtocol
     private let apiKey: String
 
-    init(apiKey: String = Config.openWeatherMapAPIKey) {
+    init(
+        apiKey: String = Config.openWeatherMapAPIKey,
+        networkClient: any NetworkClientProtocol = NetworkClient()
+    ) {
         self.apiKey = apiKey
+        self.networkClient = networkClient
     }
 
     nonisolated var isAvailable: Bool {

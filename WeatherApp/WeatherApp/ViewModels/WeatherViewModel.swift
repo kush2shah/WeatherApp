@@ -22,17 +22,18 @@ final class WeatherViewModel {
     private let weatherAggregator: WeatherAggregator
     private let modelContext: ModelContext
     private let geocodingService: GeocodingServiceProtocol
-    private let cacheService: WeatherCacheService
+    private let cacheService: any CachingServiceProtocol
 
     init(
         weatherAggregator: WeatherAggregator? = nil,
         geocodingService: GeocodingServiceProtocol? = nil,
+        cacheService: (any CachingServiceProtocol)? = nil,
         modelContext: ModelContext
     ) {
         self.weatherAggregator = weatherAggregator ?? WeatherAggregator()
         self.geocodingService = geocodingService ?? GeocodingService()
         self.modelContext = modelContext
-        self.cacheService = WeatherCacheService(modelContext: modelContext)
+        self.cacheService = cacheService ?? WeatherCacheService(modelContext: modelContext)
     }
 
     /// Fetch weather for a location from all available sources

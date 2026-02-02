@@ -10,11 +10,15 @@ import Foundation
 /// Tomorrow.io service implementation
 actor TomorrowIOService: WeatherServiceProtocol {
     let source: WeatherSource = .tomorrowIO
-    private let networkClient = NetworkClient()
+    private let networkClient: any NetworkClientProtocol
     private let apiKey: String
 
-    init(apiKey: String = Config.tomorrowIOAPIKey) {
+    init(
+        apiKey: String = Config.tomorrowIOAPIKey,
+        networkClient: any NetworkClientProtocol = NetworkClient()
+    ) {
         self.apiKey = apiKey
+        self.networkClient = networkClient
     }
 
     nonisolated var isAvailable: Bool {

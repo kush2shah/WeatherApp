@@ -10,7 +10,11 @@ import Foundation
 /// NOAA/NWS weather service implementation
 actor NOAAWeatherService: WeatherServiceProtocol {
     let source: WeatherSource = .noaa
-    private let networkClient = NetworkClient()
+    private let networkClient: any NetworkClientProtocol
+
+    init(networkClient: any NetworkClientProtocol = NetworkClient()) {
+        self.networkClient = networkClient
+    }
 
     nonisolated var isAvailable: Bool { true }
 
