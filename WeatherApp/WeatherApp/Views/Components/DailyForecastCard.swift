@@ -1,3 +1,4 @@
+
 //
 //  DailyForecastCard.swift
 //  WeatherApp
@@ -7,11 +8,16 @@
 
 import SwiftUI
 
+/// Identifiable wrapper for a selected day index, used as sheet item
+private struct SelectedDayIndex: Identifiable {
+    let id: Int  // index into the forecasts array
+}
+
 /// Daily forecast card with list of days
 struct DailyForecastCard: View {
     let forecasts: [DailyForecast]
     let weatherData: WeatherData
-    @State private var selectedForecast: DailyForecast?
+    @State private var selectedDayIndex: SelectedDayIndex?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -24,10 +30,10 @@ struct DailyForecastCard: View {
             VStack(spacing: 0) {
                 let minTemp = forecasts.map { $0.lowTemperature }.min() ?? 0
                 let maxTemp = forecasts.map { $0.highTemperature }.max() ?? 100
-                
+
                 ForEach(Array(forecasts.prefix(10).enumerated()), id: \.element.id) { index, forecast in
                     Button {
-                        selectedForecast = forecast
+                        selectedDayIndex = SelectedDayIndex(id: index)
                     } label: {
                         DailyForecastRow(
                             forecast: forecast,
@@ -51,10 +57,15 @@ struct DailyForecastCard: View {
             in: RoundedRectangle(cornerRadius: 24, style: .continuous)
         )
         .padding(.horizontal)
-        .sheet(item: $selectedForecast) { forecast in
-            DailyDetailView(forecast: forecast, weatherData: weatherData)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+        .sheet(item: $selectedDayIndex) { selected in
+            DailyDetailView(
+                forecasts: Array(forecasts.prefix(10)),
+                initialIndex: selected.id,
+                weatherData: weatherData
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
         }
     }
 }
@@ -64,6 +75,7 @@ struct DailyForecastRow: View {
     let forecast: DailyForecast
     let minTemp: Double
     let maxTemp: Double
+    @ObservedObject private var preferences = UserPreferences.shared
 
     var body: some View {
         HStack {
@@ -87,9 +99,9 @@ struct DailyForecastRow: View {
             .frame(width: 40)
 
             Spacer()
-            
+
             // Low Temp
-            Text(verbatim: forecast.lowTemperature.temperatureString(unit: .fahrenheit))
+            Text(verbatim: forecast.lowTemperature.temperatureString(unit: preferences.temperatureUnit))
                 .font(.system(.callout, design: .rounded))
                 .foregroundStyle(.secondary)
                 .frame(width: 40, alignment: .trailing)
@@ -105,7 +117,7 @@ struct DailyForecastRow: View {
             .frame(maxWidth: 100)
 
             // High Temp
-            Text(verbatim: forecast.highTemperature.temperatureString(unit: .fahrenheit))
+            Text(verbatim: forecast.highTemperature.temperatureString(unit: preferences.temperatureUnit))
                 .font(.system(.callout, design: .rounded))
                 .foregroundStyle(.primary)
                 .frame(width: 40, alignment: .leading)
@@ -127,14 +139,13 @@ struct TemperatureBar: View {
     let high: Double
     let minRange: Double
     let maxRange: Double
-    
+
     var body: some View {
-        GeometryReader {
-            geo in
+        GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(Color.primary.opacity(0.1))
-                
+
                 Capsule()
                     .fill(
                         LinearGradient(
@@ -148,16 +159,16 @@ struct TemperatureBar: View {
             }
         }
     }
-    
+
     func width(in totalWidth: CGFloat) -> CGFloat {
         let range = high - low
-        let totalRange = max(maxRange - minRange, 1) // Prevent division by zero
+        let totalRange = max(maxRange - minRange, 1)
         return totalWidth * CGFloat(range / totalRange)
     }
-    
+
     func offset(in totalWidth: CGFloat) -> CGFloat {
         let offset = low - minRange
-        let totalRange = max(maxRange - minRange, 1) // Prevent division by zero
+        let totalRange = max(maxRange - minRange, 1)
         return totalWidth * CGFloat(offset / totalRange)
     }
 }

@@ -109,6 +109,7 @@ struct HourlyForecastItem: View {
     let timezone: TimeZone
     var sunrise: Date? = nil
     var sunset: Date? = nil
+    @ObservedObject private var preferences = UserPreferences.shared
 
     /// Check if this hour is nighttime by comparing time-of-day only
     private var isNight: Bool {
@@ -146,7 +147,7 @@ struct HourlyForecastItem: View {
                 .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
 
             // Temperature
-            Text(verbatim: forecast.temperature.temperatureString(unit: .fahrenheit))
+            Text(verbatim: forecast.temperature.temperatureString(unit: preferences.temperatureUnit))
                 .font(.system(.callout, design: .rounded))
                 .fontWeight(.semibold)
                 .foregroundStyle(.primary)

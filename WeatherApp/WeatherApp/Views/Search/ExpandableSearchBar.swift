@@ -110,6 +110,7 @@ struct ExpandableSearchBar: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Search for a city")
     }
 
     // MARK: - Expanded Overlay
@@ -144,6 +145,8 @@ struct ExpandableSearchBar: View {
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundStyle(.secondary)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
                         }
                     }

@@ -99,7 +99,6 @@ struct LaunchView: View {
             }
             .padding(.bottom, 32)
         }
-        .scrollIndicators(.hidden)
     }
 
     // MARK: - Welcome Prompt
@@ -219,8 +218,8 @@ struct LaunchView: View {
 
             // Fetch weather
             let result = await weatherAggregator.fetchAllAvailableWeather(for: location)
-            if let primarySource = result.sources.keys.first,
-               let weather = result.sources[primarySource] {
+            let primarySource = result.sources[.weatherKit] != nil ? WeatherSource.weatherKit : result.sources.keys.first
+            if let primarySource, let weather = result.sources[primarySource] {
                 await MainActor.run {
                     currentLocationWeather = weather
                     isLoadingCurrentWeather = false
@@ -245,8 +244,8 @@ struct LaunchView: View {
             Task {
                 let location = savedLocation.toDomain()
                 let result = await weatherAggregator.fetchAllAvailableWeather(for: location)
-                if let primarySource = result.sources.keys.first,
-                   let weather = result.sources[primarySource] {
+                let primarySource = result.sources[.weatherKit] != nil ? WeatherSource.weatherKit : result.sources.keys.first
+                if let primarySource, let weather = result.sources[primarySource] {
                     await MainActor.run {
                         savedLocationWeather[savedLocation.id] = weather
                     }

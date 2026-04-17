@@ -14,6 +14,8 @@ struct CurrentWeatherCard: View {
     var sunset: Date? = nil
     var timezone: TimeZone = .current
 
+    @ObservedObject private var preferences = UserPreferences.shared
+
     /// Check if current time is nighttime
     private var isNight: Bool {
         guard let sunrise = sunrise, let sunset = sunset else { return false }
@@ -35,6 +37,35 @@ struct CurrentWeatherCard: View {
         return nowMinutes < sunriseMinutes || nowMinutes >= sunsetMinutes
     }
 
+    private var windString: String {
+        switch preferences.windSpeedUnit {
+        case .milesPerHour:
+            return "\(Int(UnitConverter.metersPerSecondToMph(weather.windSpeed))) mph"
+        case .kilometersPerHour:
+            return "\(Int(UnitConverter.metersPerSecondToKph(weather.windSpeed))) km/h"
+        case .metersPerSecond:
+            return "\(Int(weather.windSpeed)) m/s"
+        }
+    }
+
+    private var pressureString: String {
+        switch preferences.pressureUnit {
+        case .hectopascals:
+            return "\(Int(weather.pressure)) hPa"
+        case .inchesOfMercury:
+            return String(format: "%.2f inHg", UnitConverter.hPaToInHg(weather.pressure))
+        }
+    }
+
+    private func visibilityString(for visibility: Double) -> String {
+        switch preferences.visibilityUnit {
+        case .kilometers:
+            return "\(Int(UnitConverter.metersToKilometers(visibility))) km"
+        case .miles:
+            return String(format: "%.1f mi", UnitConverter.metersToMiles(visibility))
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main Info
@@ -43,7 +74,7 @@ struct CurrentWeatherCard: View {
                     .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2) // Added contrast shadow
                     .padding(.bottom, 8)
 
-                Text(verbatim: weather.temperature.temperatureString(unit: .fahrenheit))
+                Text(verbatim: weather.temperature.temperatureString(unit: preferences.temperatureUnit))
                     .font(.system(size: 96, weight: .thin, design: .rounded))
                     .foregroundStyle(.primary)
                     .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1) // Subtle text shadow
@@ -60,7 +91,7 @@ struct CurrentWeatherCard: View {
             // Scrollable Detail Row
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
-                    DetailItem(label: "Wind", value: "\(Int(weather.windSpeedMph)) mph", icon: "wind")
+                    DetailItem(label: "Wind", value: windString, icon: "wind")
                     
                     Divider().frame(height: 30).padding(.horizontal, 16)
                     
@@ -73,11 +104,11 @@ struct CurrentWeatherCard: View {
                         Divider().frame(height: 30).padding(.horizontal, 16)
                     }
                     
-                    DetailItem(label: "Pressure", value: "\(Int(weather.pressure))", icon: "barometer")
+                    DetailItem(label: "Pressure", value: pressureString, icon: "barometer")
                     
                     if let visibility = weather.visibility {
                         Divider().frame(height: 30).padding(.horizontal, 16)
-                        DetailItem(label: "Vis", value: "\(Int(visibility / 1000)) km", icon: "eye")
+                        DetailItem(label: "Vis", value: visibilityString(for: visibility), icon: "eye")
                     }
                     
                     if let cloud = weather.cloudCoverPercentage {
@@ -107,13 +138,14 @@ private struct DetailItem: View {
             Image(systemName: icon)
                 .font(.system(size: 18))
                 .foregroundStyle(.secondary)
-            
+                .accessibilityHidden(true)
+
             VStack(spacing: 2) {
                 Text(value)
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(.primary)
                     .fixedSize() // Prevent truncation
-                
+
                 Text(label)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -121,6 +153,7 @@ private struct DetailItem: View {
             }
         }
         .frame(minWidth: 60)
+        .accessibilityElement(children: .combine)
     }
 }
 

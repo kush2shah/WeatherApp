@@ -1,3 +1,4 @@
+
 //
 //  ComparisonChartView.swift
 //  WeatherApp
@@ -8,70 +9,116 @@
 import SwiftUI
 import Charts
 
-/// Overlaid line chart comparing multiple weather sources
+/// Uncertainty band chart: shaded min-max area + bold consensus line.
+/// Replaces the spaghetti multi-line chart with a cleaner visualization
+/// that emphasizes WHERE sources disagree, not who says what.
 struct ComparisonChartView: View {
     let data: ComparisonData
     let metric: ComparisonMetric
 
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            Chart {
-                ForEach(Array(chartData.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
-                    ForEach(chartData[source] ?? []) { point in
-                        LineMark(
-                            x: .value("Time", point.timestamp),
-                            y: .value(metric.rawValue, point.value)
-                        )
-                        .foregroundStyle(by: .value("Source", source.shortName))
-                        .lineStyle(StrokeStyle(lineWidth: 2.5))
-                        .interpolationMethod(.catmullRom)
+    private var points: [UncertaintyPoint] {
+        data.uncertaintyBands[metric] ?? []
+    }
 
-                        // Add point markers for clarity
-                        PointMark(
-                            x: .value("Time", point.timestamp),
-                            y: .value(metric.rawValue, point.value)
-                        )
-                        .foregroundStyle(by: .value("Source", source.shortName))
-                        .symbol(by: .value("Source", source.shortName))
+    private var bandColor: Color {
+        switch metric {
+        case .temperature:   return .orange
+        case .precipitation: return .blue
+        case .wind:          return .teal
+        case .humidity:      return .indigo
+        }
+    }
+
+    var body: some View {
+        if points.isEmpty {
+            emptyState
+        } else {
+            chart
+        }
+    }
+
+    private var chart: some View {
+        Chart {
+            // Shaded band: full spread across all sources
+            ForEach(points) { point in
+                AreaMark(
+                    x: .value("Time", point.timestamp),
+                    yStart: .value("Min", point.min),
+                    yEnd: .value("Max", point.max)
+                )
+                .foregroundStyle(bandColor.opacity(0.18))
+                .interpolationMethod(.catmullRom)
+            }
+
+            // Dashed lower bound
+            ForEach(points) { point in
+                LineMark(
+                    x: .value("Time", point.timestamp),
+                    y: .value("Min", point.min)
+                )
+                .foregroundStyle(bandColor.opacity(0.4))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .interpolationMethod(.catmullRom)
+            }
+
+            // Dashed upper bound
+            ForEach(points) { point in
+                LineMark(
+                    x: .value("Time", point.timestamp),
+                    y: .value("Max", point.max)
+                )
+                .foregroundStyle(bandColor.opacity(0.4))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .interpolationMethod(.catmullRom)
+            }
+
+            // Bold consensus line (mean of all sources)
+            ForEach(points) { point in
+                LineMark(
+                    x: .value("Time", point.timestamp),
+                    y: .value("Consensus", point.mean)
+                )
+                .foregroundStyle(bandColor)
+                .lineStyle(StrokeStyle(lineWidth: 2.5))
+                .interpolationMethod(.catmullRom)
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .hour, count: 6)) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                    .foregroundStyle(.primary.opacity(0.1))
+                AxisValueLabel(format: .dateTime.hour(.defaultDigits(amPM: .abbreviated)))
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                    .foregroundStyle(.primary.opacity(0.1))
+                AxisValueLabel {
+                    if let dbl = value.as(Double.self) {
+                        Text("\(Int(dbl))\(metric.unit)")
+                            .font(.system(.caption2, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .hour, count: 3)) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel(format: .dateTime.hour(), centered: false)
-                }
-            }
-            .chartYAxis {
-                AxisMarks { value in
-                    AxisGridLine()
-                    AxisValueLabel()
-                }
-            }
-            .chartYAxisLabel(metric.unit, position: .trailing)
-            .chartLegend(position: .bottom, spacing: 12)
-            .frame(width: max(350, CGFloat(maxDataPoints) * 35), height: 250) // More compact height
-            .padding(.vertical, 8)
         }
+        .chartLegend(.hidden)
+        .frame(height: 200)
     }
 
-    /// Get chart data based on selected metric
-    private var chartData: [WeatherSource: [DataPoint]] {
-        switch metric {
-        case .temperature:
-            return data.temperatures
-        case .precipitation:
-            return data.precipitation
-        case .wind:
-            return data.wind
-        case .humidity:
-            return data.humidity
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.title2)
+                .foregroundStyle(.tertiary)
+            Text("Not enough data")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(.tertiary)
         }
-    }
-
-    /// Calculate the maximum number of data points for sizing the chart
-    private var maxDataPoints: Int {
-        chartData.values.map { $0.count }.max() ?? 0
+        .frame(maxWidth: .infinity)
+        .frame(height: 200)
     }
 }

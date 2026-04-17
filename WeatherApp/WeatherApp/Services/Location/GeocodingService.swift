@@ -11,7 +11,6 @@ import MapKit
 
 /// Geocoding service supporting multiple input formats
 actor GeocodingService: GeocodingServiceProtocol {
-    private let geocoder = CLGeocoder()
 
     /// Geocode an address string to a location
     /// Supports formats:
@@ -27,16 +26,16 @@ actor GeocodingService: GeocodingServiceProtocol {
             return try await reverseGeocode(coordinate: coordinate)
         }
 
-        // Use CLGeocoder for address lookup
-        do {
-            let placemarks = try await geocoder.geocodeAddressString(trimmed)
+        guard let request = MKGeocodingRequest(addressString: trimmed) else {
+            throw GeocodingError.invalidAddress
+        }
 
-            guard let placemark = placemarks.first,
-                  let clLocation = placemark.location else {
+        do {
+            let mapItems = try await request.mapItems
+            guard let mapItem = mapItems.first else {
                 throw GeocodingError.noResults
             }
-
-            return locationFromPlacemark(placemark, clLocation: clLocation)
+            return locationFromMapItem(mapItem)
         } catch {
             if let geocodingError = error as? GeocodingError {
                 throw geocodingError
@@ -57,14 +56,16 @@ actor GeocodingService: GeocodingServiceProtocol {
             longitude: coordinate.longitude
         )
 
-        do {
-            let placemarks = try await geocoder.reverseGeocodeLocation(clLocation)
+        guard let request = MKReverseGeocodingRequest(location: clLocation) else {
+            throw GeocodingError.invalidCoordinate
+        }
 
-            guard let placemark = placemarks.first else {
+        do {
+            let mapItems = try await request.mapItems
+            guard let mapItem = mapItems.first else {
                 throw GeocodingError.noResults
             }
-
-            return locationFromPlacemark(placemark, clLocation: clLocation)
+            return locationFromMapItem(mapItem)
         } catch {
             if let geocodingError = error as? GeocodingError {
                 throw geocodingError
@@ -89,24 +90,20 @@ actor GeocodingService: GeocodingServiceProtocol {
         return coordinate.isValid ? coordinate : nil
     }
 
-    /// Create Location from CLPlacemark
-    private func locationFromPlacemark(_ placemark: CLPlacemark, clLocation: CLLocation) -> Location {
-        let name = [
-            placemark.locality,
-            placemark.administrativeArea,
-            placemark.country
-        ]
-        .compactMap { $0 }
-        .joined(separator: ", ")
+    /// Create Location from MKMapItem
+    private func locationFromMapItem(_ mapItem: MKMapItem) -> Location {
+        let clCoordinate = mapItem.location.coordinate
+        let coordinate = Coordinate(latitude: clCoordinate.latitude, longitude: clCoordinate.longitude)
+        let placemark = mapItem.placemark
 
-        let fallbackName = "\(clLocation.coordinate.latitude), \(clLocation.coordinate.longitude)"
+        let name = [placemark.locality, placemark.administrativeArea, placemark.country]
+            .compactMap { $0 }
+            .joined(separator: ", ")
+        let fallbackName = "\(coordinate.latitude), \(coordinate.longitude)"
 
         return Location(
             name: name.isEmpty ? fallbackName : name,
-            coordinate: Coordinate(
-                latitude: clLocation.coordinate.latitude,
-                longitude: clLocation.coordinate.longitude
-            ),
+            coordinate: coordinate,
             timezone: placemark.timeZone ?? .current,
             country: placemark.country,
             isoCountryCode: placemark.isoCountryCode,

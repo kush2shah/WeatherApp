@@ -112,6 +112,7 @@ final class SearchViewModel: NSObject {
 
     /// Create Location from MKMapItem
     private func locationFromMapItem(_ mapItem: MKMapItem) -> Location {
+        let clCoordinate = mapItem.location.coordinate
         let placemark = mapItem.placemark
         let name = mapItem.name ?? [
             placemark.locality,
@@ -123,12 +124,10 @@ final class SearchViewModel: NSObject {
 
         return Location(
             name: name,
-            coordinate: Coordinate(
-                latitude: placemark.coordinate.latitude,
-                longitude: placemark.coordinate.longitude
-            ),
+            coordinate: Coordinate(latitude: clCoordinate.latitude, longitude: clCoordinate.longitude),
             timezone: placemark.timeZone ?? .current,
             country: placemark.country,
+            isoCountryCode: placemark.isoCountryCode,
             administrativeArea: placemark.administrativeArea,
             locality: placemark.locality
         )
@@ -137,6 +136,7 @@ final class SearchViewModel: NSObject {
 
 // MARK: - MKLocalSearchCompleterDelegate
 
+@MainActor
 extension SearchViewModel: MKLocalSearchCompleterDelegate {
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         searchResults = completer.results

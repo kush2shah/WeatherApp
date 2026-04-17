@@ -10,6 +10,7 @@ import SwiftUI
 /// Loading state with animated weather icon
 struct LoadingStateView: View {
     @State private var isAnimating = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 20) {
@@ -23,12 +24,11 @@ struct LoadingStateView: View {
             Text("Loading weather...")
                 .font(.headline)
                 .foregroundStyle(.primary)
-
-            ProgressView()
-                .tint(.primary)
         }
         .onAppear {
-            isAnimating = true
+            if !reduceMotion {
+                isAnimating = true
+            }
         }
     }
 }

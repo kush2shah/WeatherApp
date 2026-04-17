@@ -1,3 +1,4 @@
+
 //
 //  ForecastComparisonView.swift
 //  WeatherApp
@@ -7,7 +8,9 @@
 
 import SwiftUI
 
-/// Main forecast comparison view using system patterns
+/// Redesigned forecast comparison view.
+/// Leads with an agreement score, shows an uncertainty band chart,
+/// per-source snapshot cards, and AI-style insight callouts.
 struct ForecastComparisonView: View {
     let weatherData: WeatherData
     @State private var viewModel = ComparisonViewModel()
@@ -15,82 +18,31 @@ struct ForecastComparisonView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if let comparisonData = viewModel.comparisonData {
-                    // Chart Section
-                    Section {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Picker("Metric", selection: $viewModel.selectedMetric) {
-                                ForEach(ComparisonMetric.allCases) { metric in
-                                    Text(metric.rawValue).tag(metric)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            
-                            ComparisonChartView(
-                                data: comparisonData,
-                                metric: viewModel.selectedMetric
-                            )
+            ScrollView {
+                if let data = viewModel.comparisonData {
+                    VStack(spacing: 20) {
+                        AgreementScoreHeader(data: data)
+                        MetricSelectorRow(selected: $viewModel.selectedMetric)
+                        UncertaintyChartSection(data: data, metric: viewModel.selectedMetric)
+                        SourceSnapshotRow(weatherData: weatherData, outliers: data.outliers)
+                        if !data.insights.isEmpty {
+                            InsightSection(insights: data.insights)
                         }
-                        .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16))
-                    } header: {
-                        Text("Forecast Trends")
+                        SourceDetailSection(weatherData: weatherData)
                     }
-
-                    // Key Differences Section
-                    Section {
-                        DifferenceRow(
-                            icon: "thermometer.medium",
-                            title: "Temperature Variance",
-                            value: String(format: "%.1f°", comparisonData.temperatureVariance),
-                            description: "Max spread between sources",
-                            severity: temperatureSeverity(for: comparisonData)
-                        )
-
-                        if comparisonData.precipitationDifference > 0 {
-                            DifferenceRow(
-                                icon: "cloud.rain.fill",
-                                title: "Precipitation Disagreement",
-                                value: String(format: "%.0f%%", comparisonData.precipitationDifference),
-                                description: "Difference in rain chance",
-                                severity: precipitationSeverity(for: comparisonData)
-                            )
-                        }
-
-                        if comparisonData.windVariance > 0 {
-                            DifferenceRow(
-                                icon: "wind",
-                                title: "Wind Speed Variance",
-                                value: String(format: "%.1f mph", comparisonData.windVariance),
-                                description: "Difference in wind speed",
-                                severity: windSeverity(for: comparisonData)
-                            )
-                        }
-                    } header: {
-                        Text("Key Differences")
-                    } footer: {
-                        Text("Variance indicates how much the weather sources disagree.")
-                    }
-
-                    // Sources Section
-                    Section("Source Details") {
-                        ForEach(Array(weatherData.sources.keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { source in
-                            if let weather = weatherData.sources[source] {
-                                SourceDetailRow(source: source, weather: weather)
-                            }
-                        }
-                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, minHeight: 400)
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Compare")
+            .navigationTitle("Compare Sources")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
                 }
             }
             .onAppear {
@@ -98,113 +50,372 @@ struct ForecastComparisonView: View {
             }
         }
     }
-    
-    // MARK: - Severity Helpers
-    
-    private func temperatureSeverity(for data: ComparisonData) -> DifferenceSeverity {
-        if data.temperatureVariance < 5 { return .low }
-        else if data.temperatureVariance < 10 { return .medium }
-        else { return .high }
-    }
-
-    private func precipitationSeverity(for data: ComparisonData) -> DifferenceSeverity {
-        if data.precipitationDifference < 20 { return .low }
-        else if data.precipitationDifference < 40 { return .medium }
-        else { return .high }
-    }
-
-    private func windSeverity(for data: ComparisonData) -> DifferenceSeverity {
-        if data.windVariance < 5 { return .low }
-        else if data.windVariance < 15 { return .medium }
-        else { return .high }
-    }
 }
 
-/// Standard list row for highlighting differences
-struct DifferenceRow: View {
-    let icon: String
-    let title: String
-    let value: String
-    let description: String
-    let severity: DifferenceSeverity
+// MARK: - Agreement Score Header
+
+private struct AgreementScoreHeader: View {
+    let data: ComparisonData
+
+    private var scoreColor: Color {
+        if data.agreementScore >= 80 { return .green }
+        if data.agreementScore >= 50 { return .orange }
+        return .red
+    }
+
+    private var scoreLabel: String {
+        if data.agreementScore >= 80 { return "High agreement" }
+        if data.agreementScore >= 50 { return "Moderate uncertainty" }
+        return "High uncertainty"
+    }
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(severity.color)
-                .frame(width: 30)
+        HStack(spacing: 20) {
+            // Score dial
+            ZStack {
+                Circle()
+                    .stroke(scoreColor.opacity(0.15), lineWidth: 6)
+                    .frame(width: 72, height: 72)
+                Circle()
+                    .trim(from: 0, to: CGFloat(data.agreementScore) / 100)
+                    .stroke(scoreColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 72, height: 72)
+                    .animation(.easeOut(duration: 0.8), value: data.agreementScore)
+                VStack(spacing: 0) {
+                    Text("\(data.agreementScore)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(scoreColor)
+                    Text("%")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body)
-                    .fontWeight(.medium)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Source Agreement")
+                    .font(.system(.headline, design: .rounded))
                     .foregroundStyle(.primary)
-
-                Text(description)
-                    .font(.caption)
+                Text(scoreLabel)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(scoreColor)
+                Text("\(data.sourceCount) sources · 24-hour window")
+                    .font(.system(.caption, design: .rounded))
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
-
-            Text(value)
-                .font(.callout)
-                .fontWeight(.bold)
-                .foregroundStyle(severity.color)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(severity.color.opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
         }
-        .padding(.vertical, 4)
+        .padding(20)
+        .glassEffect(in: .rect(cornerRadius: 24))
     }
 }
 
-/// Standard list row for source details
-struct SourceDetailRow: View {
+// MARK: - Metric Selector
+
+private struct MetricSelectorRow: View {
+    @Binding var selected: ComparisonMetric
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ComparisonMetric.allCases) { metric in
+                    MetricPill(metric: metric, isSelected: selected == metric) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selected = metric
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+private struct MetricPill: View {
+    let metric: ComparisonMetric
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: metric.icon)
+                    .font(.caption)
+                Text(metric.rawValue)
+                    .font(.system(.subheadline, design: .rounded))
+                    .fontWeight(.medium)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .glassEffect(isSelected ? .regular.interactive() : .regular)
+            .foregroundStyle(isSelected ? Color.primary : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Uncertainty Chart Section
+
+private struct UncertaintyChartSection: View {
+    let data: ComparisonData
+    let metric: ComparisonMetric
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                SectionLabel(text: "24-Hour Forecast Range")
+                Spacer()
+                Text("Shaded band = spread between sources")
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(.tertiary)
+            }
+            ComparisonChartView(data: data, metric: metric)
+        }
+        .padding(20)
+        .glassEffect(in: .rect(cornerRadius: 24))
+    }
+}
+
+// MARK: - Source Snapshot Cards
+
+private struct SourceSnapshotRow: View {
+    let weatherData: WeatherData
+    let outliers: [SourceOutlier]
+
+    private var outlierSources: Set<WeatherSource> {
+        Set(outliers.map { $0.source })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(text: "Right Now")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(weatherData.availableSources, id: \.self) { source in
+                        if let weather = weatherData.sources[source] {
+                            SourceNowCard(
+                                source: source,
+                                weather: weather,
+                                isOutlier: outlierSources.contains(source)
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 2)
+            }
+        }
+    }
+}
+
+private struct SourceNowCard: View {
+    let source: WeatherSource
+    let weather: SourcedWeatherInfo
+    let isOutlier: Bool
+
+    private var sourceColor: Color {
+        switch source {
+        case .weatherKit:    return .blue
+        case .googleWeather: return .red
+        case .noaa:          return .green
+        case .openWeatherMap: return .orange
+        case .tomorrowIO:    return .purple
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Color accent bar
+            Rectangle()
+                .fill(sourceColor)
+                .frame(height: 3)
+                .clipShape(RoundedRectangle(cornerRadius: 2))
+                .padding(.bottom, 10)
+
+            // Temperature
+            Text(weather.current.temperature.fahrenheitString)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+
+            // Condition
+            Label(weather.current.conditionDescription, systemImage: weather.current.condition.sfSymbolName)
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(.secondary)
+                .symbolRenderingMode(.multicolor)
+                .lineLimit(1)
+                .padding(.top, 4)
+
+            Spacer()
+
+            // Source name + outlier badge
+            HStack(spacing: 4) {
+                Text(source.shortName)
+                    .font(.system(.caption2, design: .rounded).weight(.semibold))
+                    .foregroundStyle(sourceColor)
+                if isOutlier {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding(.top, 8)
+        }
+        .padding(14)
+        .frame(width: 130, height: 130)
+        .glassEffect(in: .rect(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(isOutlier ? Color.orange.opacity(0.4) : Color.clear, lineWidth: 1.5)
+        )
+    }
+}
+
+// MARK: - Insights Section
+
+private struct InsightSection: View {
+    let insights: [ComparisonInsight]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(text: "Insights")
+            VStack(spacing: 1) {
+                ForEach(insights) { insight in
+                    InsightRow(insight: insight)
+                    if insight.id != insights.last?.id {
+                        Divider().padding(.leading, 54)
+                    }
+                }
+            }
+            .glassEffect(in: .rect(cornerRadius: 24))
+        }
+    }
+}
+
+private struct InsightRow: View {
+    let insight: ComparisonInsight
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: insight.icon)
+                .font(.title3)
+                .foregroundStyle(insight.severity.color)
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(insight.title)
+                    .font(.system(.subheadline, design: .rounded))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                Text(insight.detail)
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+}
+
+// MARK: - Source Detail Section
+
+private struct SourceDetailSection: View {
+    let weatherData: WeatherData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(text: "Source Details")
+            VStack(spacing: 1) {
+                ForEach(weatherData.availableSources, id: \.self) { source in
+                    if let weather = weatherData.sources[source] {
+                        ImprovedSourceDetailRow(source: source, weather: weather)
+                        if source != weatherData.availableSources.last {
+                            Divider().padding(.leading, 16)
+                        }
+                    }
+                }
+            }
+            .glassEffect(in: .rect(cornerRadius: 24))
+
+            // Attributions
+            ForEach(weatherData.availableSources, id: \.self) { source in
+                if let weather = weatherData.sources[source] {
+                    Text(weather.attribution)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .padding(.bottom, 12)
+    }
+}
+
+private struct ImprovedSourceDetailRow: View {
     let source: WeatherSource
     let weather: SourcedWeatherInfo
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(source.displayName)
-                    .font(.headline)
-                Spacer()
-                Text(verbatim: weather.current.temperature.temperatureString(unit: .fahrenheit))
-                    .font(.headline)
-                    .fontWeight(.bold)
-            }
-            
-            HStack(spacing: 12) {
-                Label(weather.current.conditionDescription, systemImage: weather.current.condition.sfSymbolName)
-                Spacer()
-                Label("\(Int(weather.current.humidityPercentage))%", systemImage: "humidity")
-                Label("\(Int(weather.current.windSpeedMph)) mph", systemImage: "wind")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .symbolRenderingMode(.hierarchical)
+    private var sourceColor: Color {
+        switch source {
+        case .weatherKit:    return .blue
+        case .googleWeather: return .red
+        case .noaa:          return .green
+        case .openWeatherMap: return .orange
+        case .tomorrowIO:    return .purple
         }
-        .padding(.vertical, 4)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Color accent
+            Rectangle()
+                .fill(sourceColor)
+                .frame(width: 3)
+                .clipShape(Capsule())
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(source.displayName)
+                        .font(.system(.subheadline, design: .rounded))
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Text(weather.current.temperature.fahrenheitString)
+                        .font(.system(.headline, design: .rounded))
+                        .fontWeight(.bold)
+                }
+                HStack(spacing: 12) {
+                    Label(weather.current.conditionDescription, systemImage: weather.current.condition.sfSymbolName)
+                        .symbolRenderingMode(.multicolor)
+                    Spacer()
+                    Label("\(weather.current.humidityPercentage)%", systemImage: "humidity")
+                    Label("\(Int(weather.current.windSpeedMph)) mph", systemImage: "wind")
+                }
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
-/// Severity level for differences
-enum DifferenceSeverity {
-    case low
-    case medium
-    case high
+// MARK: - Shared Helpers
 
-    var color: Color {
-        switch self {
-        case .low:
-            return .green
-        case .medium:
-            return .yellow
-        case .high:
-            return .red
-        }
+private struct SectionLabel: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(.subheadline, design: .rounded))
+            .fontWeight(.medium)
+            .foregroundStyle(.secondary)
+    }
+}
+
+private extension Double {
+    /// Formats a Celsius temperature as a Fahrenheit string
+    var fahrenheitString: String {
+        let f = self * 9 / 5 + 32
+        return "\(Int(f.rounded()))°"
     }
 }

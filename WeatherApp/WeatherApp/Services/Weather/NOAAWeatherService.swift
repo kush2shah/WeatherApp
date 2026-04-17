@@ -36,18 +36,20 @@ actor NOAAWeatherService: WeatherServiceProtocol {
         let pointsResponse: NOAAPointsResponse = try await networkClient.fetch(url: pointsURL)
 
         // Step 2: Fetch daily forecast
-        let forecastResponse: NOAAForecastResponse = try await networkClient.fetch(
+        async let forecastResponse: NOAAForecastResponse = networkClient.fetch(
             url: pointsResponse.properties.forecast
         )
 
         // Step 3: Fetch hourly forecast
-        let hourlyResponse: NOAAForecastResponse = try await networkClient.fetch(
+        async let hourlyResponse: NOAAForecastResponse = networkClient.fetch(
             url: pointsResponse.properties.forecastHourly
         )
 
+        let (forecast, hourly) = try await (forecastResponse, hourlyResponse)
+
         return try convertToSourcedWeatherInfo(
-            forecast: forecastResponse,
-            hourly: hourlyResponse,
+            forecast: forecast,
+            hourly: hourly,
             location: location
         )
     }

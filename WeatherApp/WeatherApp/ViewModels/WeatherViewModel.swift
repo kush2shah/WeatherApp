@@ -23,6 +23,8 @@ final class WeatherViewModel {
     private let modelContext: ModelContext
     private let geocodingService: GeocodingServiceProtocol
     private let cacheService: any CachingServiceProtocol
+    private var activeFetchTask: Task<Void, Never>?
+    private var activeRefreshTask: Task<Void, Never>?
 
     init(
         weatherAggregator: WeatherAggregator? = nil,
@@ -38,61 +40,13 @@ final class WeatherViewModel {
 
     /// Fetch weather for a location from all available sources
     func fetchWeather(for location: Location) async {
-        isLoading = true
-        error = nil
-
-        let result = await weatherAggregator.fetchAllAvailableWeather(for: location)
-        var sources = result.sources
-        var sourceErrors = result.errors
-
-        // If fetch failed and we have a locality, try generalizing
-        if sources.isEmpty, let city = location.locality {
-            print("Initial fetch failed for \(location.name). Attempting to generalize to \(city)...")
-            do {
-                let generalizedLocation = try await geocodingService.geocode(address: city)
-                let generalizedResult = await weatherAggregator.fetchAllAvailableWeather(for: generalizedLocation)
-                sources = generalizedResult.sources
-                sourceErrors = generalizedResult.errors
-
-                if !sources.isEmpty {
-                    print("Generalized fetch succeeded for \(city)")
-
-                    let data = WeatherData(
-                        location: generalizedLocation,
-                        sources: sources,
-                        sourceErrors: sourceErrors
-                    )
-
-                    weatherData = data
-                    selectedSource = data.primarySource
-                    saveLocation(generalizedLocation)
-                    isLoading = false
-                    return
-                }
-            } catch {
-                print("Failed to generalize location: \(error)")
-            }
+        activeFetchTask?.cancel()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.performFetchWeather(for: location)
         }
-
-        guard !sources.isEmpty else {
-            error = APIError.serviceUnavailable
-            isLoading = false
-            return
-        }
-
-        let data = WeatherData(
-            location: location,
-            sources: sources,
-            sourceErrors: sourceErrors
-        )
-
-        weatherData = data
-        selectedSource = data.primarySource
-
-        // Save location
-        saveLocation(location)
-
-        isLoading = false
+        activeFetchTask = task
+        await task.value
     }
 
     /// Refresh weather for current location
@@ -103,6 +57,16 @@ final class WeatherViewModel {
 
     /// Refresh weather from a specific source
     func refreshSource(_ source: WeatherSource) async {
+        activeRefreshTask?.cancel()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.performRefreshSource(source)
+        }
+        activeRefreshTask = task
+        await task.value
+    }
+
+    private func performRefreshSource(_ source: WeatherSource) async {
         guard let location = weatherData?.location else { return }
 
         do {
@@ -123,6 +87,7 @@ final class WeatherViewModel {
             )
 
             print("[\(source.rawValue)] Refresh successful")
+            cacheService.cacheWeather(weather, locationId: location.cacheLocationId)
         } catch {
             print("[\(source.rawValue)] Refresh failed: \(error)")
 
@@ -175,5 +140,86 @@ final class WeatherViewModel {
         } catch {
             print("Failed to save location: \(error)")
         }
+    }
+
+    private func performFetchWeather(for location: Location) async {
+        isLoading = true
+        isLoadingCached = false
+        error = nil
+
+        cacheService.clearExpiredCache()
+
+        let cacheLocationId = location.cacheLocationId
+        var cachedSources: [WeatherSource: SourcedWeatherInfo] = [:]
+        for source in WeatherSource.allCases {
+            if let cached = cacheService.getCachedWeather(locationId: cacheLocationId, source: source) {
+                cachedSources[source] = cached
+            }
+        }
+
+        if !cachedSources.isEmpty {
+            let cachedData = WeatherData(
+                location: location,
+                sources: cachedSources
+            )
+            weatherData = cachedData
+            if selectedSource == nil || cachedSources[selectedSource!] == nil {
+                selectedSource = cachedData.primarySource
+            }
+            isLoadingCached = true
+        }
+
+        if Task.isCancelled { return }
+
+        let result = await weatherAggregator.fetchAllAvailableWeather(for: location)
+        var sources = result.sources
+        var sourceErrors = result.errors
+        var finalLocation = location
+
+        // If fetch failed and we have a locality, try generalizing
+        if sources.isEmpty, let city = location.locality {
+            print("Initial fetch failed for \(location.name). Attempting to generalize to \(city)...")
+            do {
+                let generalizedLocation = try await geocodingService.geocode(address: city)
+                let generalizedResult = await weatherAggregator.fetchAllAvailableWeather(for: generalizedLocation)
+                sources = generalizedResult.sources
+                sourceErrors = generalizedResult.errors
+                finalLocation = generalizedLocation
+
+                if !sources.isEmpty {
+                    print("Generalized fetch succeeded for \(city)")
+                }
+            } catch {
+                print("Failed to generalize location: \(error)")
+            }
+        }
+
+        if Task.isCancelled { return }
+
+        guard !sources.isEmpty else {
+            error = APIError.serviceUnavailable
+            isLoading = false
+            isLoadingCached = false
+            return
+        }
+
+        let data = WeatherData(
+            location: finalLocation,
+            sources: sources,
+            sourceErrors: sourceErrors
+        )
+
+        weatherData = data
+        selectedSource = data.primarySource
+
+        // Save location and cache results
+        saveLocation(finalLocation)
+        let finalCacheLocationId = finalLocation.cacheLocationId
+        for (_, weather) in sources {
+            cacheService.cacheWeather(weather, locationId: finalCacheLocationId)
+        }
+
+        isLoading = false
+        isLoadingCached = false
     }
 }

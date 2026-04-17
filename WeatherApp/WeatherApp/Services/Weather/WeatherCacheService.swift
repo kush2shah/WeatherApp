@@ -51,6 +51,22 @@ final class WeatherCacheService: CachingServiceProtocol {
 
     /// Cache weather data
     func cacheWeather(_ weather: SourcedWeatherInfo, locationId: UUID) {
+        let descriptor = FetchDescriptor<CachedWeather>(
+            predicate: #Predicate<CachedWeather> { cached in
+                cached.locationId == locationId &&
+                cached.source == weather.source.rawValue
+            }
+        )
+
+        do {
+            let existing = try modelContext.fetch(descriptor)
+            for cached in existing {
+                modelContext.delete(cached)
+            }
+        } catch {
+            print("Failed to dedupe cached weather: \(error)")
+        }
+
         let cached = CachedWeather(
             locationId: locationId,
             source: weather.source,

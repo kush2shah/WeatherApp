@@ -84,8 +84,7 @@ struct WeatherMainView: View {
                             .foregroundStyle(.primary)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Material.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .glassEffect(in: .rect(cornerRadius: 16))
                         }
                         .padding(.horizontal, 24)
                     }
@@ -99,9 +98,10 @@ struct WeatherMainView: View {
             }
             .padding(.bottom, 20)
         }
-        .scrollIndicators(.hidden)
         .sheet(isPresented: $showComparison) {
             ForecastComparisonView(weatherData: weatherData)
+                .presentationBackground(.ultraThinMaterial)
+                .presentationDragIndicator(.visible)
         }
     }
 }

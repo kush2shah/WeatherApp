@@ -100,7 +100,7 @@ final class WeatherKitService: WeatherServiceProtocol {
             conditionDescription: current.condition.description,
             humidity: current.humidity,
             pressure: current.pressure.value,
-            windSpeed: current.wind.speed.value,
+            windSpeed: current.wind.speed.converted(to: .metersPerSecond).value,
             windDirection: current.wind.direction.value,
             uvIndex: Double(current.uvIndex.value),
             visibility: current.visibility.value,
@@ -127,7 +127,7 @@ final class WeatherKitService: WeatherServiceProtocol {
             precipitationChance: hourly.precipitationChance,
             precipitationAmount: hourly.precipitationAmount.value,
             humidity: hourly.humidity,
-            windSpeed: hourly.wind.speed.value,
+            windSpeed: hourly.wind.speed.converted(to: .metersPerSecond).value,
             windDirection: hourly.wind.direction.value,
             uvIndex: Double(hourly.uvIndex.value),
             cloudCover: hourly.cloudCover
@@ -144,12 +144,12 @@ final class WeatherKitService: WeatherServiceProtocol {
             condition: convertCondition(daily.condition),
             conditionDescription: daily.condition.description,
             precipitationChance: daily.precipitationChance,
-            precipitationAmount: daily.precipitationAmount.value,
+            precipitationAmount: daily.precipitationAmountByType.precipitation.value,
             sunrise: daily.sun.sunrise,
             sunset: daily.sun.sunset,
             moonPhase: nil,
             humidity: nil, // Not available in daily forecast
-            windSpeed: daily.wind.speed.value,
+            windSpeed: daily.wind.speed.converted(to: .metersPerSecond).value,
             uvIndex: Double(daily.uvIndex.value)
         )
     }

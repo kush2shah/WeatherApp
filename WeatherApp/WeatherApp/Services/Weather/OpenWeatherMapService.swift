@@ -40,15 +40,17 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
 
         // Fetch current weather
         let currentURL = "\(baseURL)/weather?lat=\(lat)&lon=\(lon)&appid=\(apiKey)&units=metric"
-        let current: OWMCurrentResponse = try await networkClient.fetch(url: currentURL)
+        async let current: OWMCurrentResponse = networkClient.fetch(url: currentURL)
 
         // Fetch 5-day/3-hour forecast
         let forecastURL = "\(baseURL)/forecast?lat=\(lat)&lon=\(lon)&appid=\(apiKey)&units=metric"
-        let forecast: OWMForecastResponse = try await networkClient.fetch(url: forecastURL)
+        async let forecast: OWMForecastResponse = networkClient.fetch(url: forecastURL)
+
+        let (currentResponse, forecastResponse) = try await (current, forecast)
 
         return convertToSourcedWeatherInfo(
-            current: current,
-            forecast: forecast,
+            current: currentResponse,
+            forecast: forecastResponse,
             location: location
         )
     }

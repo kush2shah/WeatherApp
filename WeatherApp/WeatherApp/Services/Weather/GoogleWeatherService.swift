@@ -91,7 +91,7 @@ actor GoogleWeatherService: WeatherServiceProtocol {
             conditionDescription: response.weatherCondition?.description.text ?? "Unknown",
             humidity: Double(response.relativeHumidity ?? 0) / 100.0,
             pressure: response.airPressure?.meanSeaLevelMillibars ?? 1013.25,
-            windSpeed: response.wind?.speed?.value ?? 0,
+            windSpeed: (response.wind?.speed?.value ?? 0) / 3.6, // km/h to m/s
             windDirection: response.wind?.direction.map { Double($0.degrees) },
             uvIndex: response.uvIndex.map { Double($0) },
             visibility: response.visibility?.distance,
@@ -114,7 +114,7 @@ actor GoogleWeatherService: WeatherServiceProtocol {
             precipitationChance: Double(hour.precipitation?.probability?.percent ?? 0) / 100.0,
             precipitationAmount: hour.precipitation?.qpf?.quantity,
             humidity: Double(hour.relativeHumidity ?? 0) / 100.0,
-            windSpeed: hour.wind?.speed?.value,
+            windSpeed: (hour.wind?.speed?.value).map { $0 / 3.6 }, // km/h to m/s
             windDirection: hour.wind?.direction.map { Double($0.degrees) },
             uvIndex: hour.uvIndex.map { Double($0) },
             cloudCover: Double(hour.cloudCover ?? 0) / 100.0
@@ -149,7 +149,7 @@ actor GoogleWeatherService: WeatherServiceProtocol {
             sunset: day.sunEvents?.sunsetTime.flatMap(parseTimestamp),
             moonPhase: mapMoonPhase(day.moonEvents?.moonPhase),
             humidity: Double(day.daytimeForecast?.relativeHumidity ?? 0) / 100.0,
-            windSpeed: day.daytimeForecast?.wind?.speed?.value,
+            windSpeed: (day.daytimeForecast?.wind?.speed?.value).map { $0 / 3.6 }, // km/h to m/s
             uvIndex: day.daytimeForecast?.uvIndex.map { Double($0) }
         )
     }
