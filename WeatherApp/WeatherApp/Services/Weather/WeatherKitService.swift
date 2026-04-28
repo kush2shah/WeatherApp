@@ -42,6 +42,7 @@ final class WeatherKitService: WeatherServiceProtocol {
                 return self.convertToDomainModel(current: current, hourly: hourly, daily: daily, location: location)
             } catch {
                 let nsError = error as NSError
+                #if DEBUG
                 if nsError.domain.contains("WeatherDaemon") && nsError.code == 2 {
                     print("""
                     ⚠️ WEATHERKIT PROVISIONING ERROR:
@@ -51,6 +52,7 @@ final class WeatherKitService: WeatherServiceProtocol {
                     """)
                 }
                 print("[WeatherKit] Attempt failed: \(error)")
+                #endif
                 throw error
             }
         }
@@ -67,7 +69,7 @@ final class WeatherKitService: WeatherServiceProtocol {
                 try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
         }
-        fatalError("Unreachable")
+        throw APIError.networkError(URLError(.timedOut))
     }
 
     // MARK: - Private Helpers
@@ -114,10 +116,11 @@ final class WeatherKitService: WeatherServiceProtocol {
     private func convertHourlyForecast(_ hourly: WeatherKit.HourWeather) -> HourlyForecast {
         let convertedCondition = convertCondition(hourly.condition)
 
-        // Log warning for unmapped conditions
+        #if DEBUG
         if convertedCondition == .unknown {
             print("⚠️ [WeatherKit] Unmapped condition: \(hourly.condition) at \(hourly.date)")
         }
+        #endif
 
         return HourlyForecast(
             timestamp: hourly.date,

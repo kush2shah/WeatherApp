@@ -10,25 +10,39 @@ import SwiftData
 
 @main
 struct WeatherAppApp: App {
-    var sharedModelContainer: ModelContainer = {
+    private let modelContainer: ModelContainer?
+
+    init() {
         let schema = Schema([
             SavedLocation.self,
             CachedWeather.self,
             SearchHistory.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+        modelContainer = try? ModelContainer(for: schema, configurations: [modelConfiguration])
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if let container = modelContainer {
+                ContentView()
+                    .modelContainer(container)
+            } else {
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.orange)
+                    Text("Unable to Load App Data")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text("There was a problem loading saved data. Try restarting the app. If the problem persists, reinstall WeatherApp.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+                .padding()
+            }
         }
-        .modelContainer(sharedModelContainer)
     }
 }

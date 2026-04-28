@@ -18,6 +18,7 @@ struct ExpandableSearchBar: View {
     @State private var resolvedCurrentLocation: Location?
     @State private var showLocationDeniedAlert = false
     @State private var pendingLocationSelection = false
+    @State private var locationError: String?
 
     let modelContext: ModelContext
     let onLocationSelected: (Location) -> Void
@@ -64,6 +65,14 @@ struct ExpandableSearchBar: View {
             default:
                 break
             }
+        }
+        .alert("Location Unavailable", isPresented: Binding(
+            get: { locationError != nil },
+            set: { if !$0 { locationError = nil } }
+        )) {
+            Button("OK", role: .cancel) { locationError = nil }
+        } message: {
+            Text(locationError ?? "")
         }
         .alert("Location Access Denied", isPresented: $showLocationDeniedAlert) {
             Button("Open Settings") {
@@ -448,6 +457,7 @@ struct ExpandableSearchBar: View {
         } catch {
             await MainActor.run {
                 pendingLocationSelection = false
+                locationError = "Couldn't determine your location. Check your connection and try again."
             }
         }
     }

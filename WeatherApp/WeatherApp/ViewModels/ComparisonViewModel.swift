@@ -15,9 +15,12 @@ import Observation
 final class ComparisonViewModel {
     var selectedMetric: ComparisonMetric = .temperature
     var comparisonData: ComparisonData?
+    var analysisError: String?
 
     /// Analyze weather data and produce all comparison analytics
     func analyzeWeatherData(_ weatherData: WeatherData) {
+        analysisError = nil
+        comparisonData = nil
         let now = Date()
         let endTime = now.addingTimeInterval(24 * 3600)
 
@@ -122,9 +125,7 @@ final class ComparisonViewModel {
                     series.min(by: { abs($0.timestamp.timeIntervalSince(ts)) < abs($1.timestamp.timeIntervalSince(ts)) })
                         .flatMap { abs($0.timestamp.timeIntervalSince(ts)) < 90 ? $0.value : nil }
                 }
-                guard values.count >= 2 else { return nil }
-                let min = values.min()!
-                let max = values.max()!
+                guard values.count >= 2, let min = values.min(), let max = values.max() else { return nil }
                 let mean = values.reduce(0, +) / Double(values.count)
                 return UncertaintyPoint(timestamp: ts, min: min, max: max, mean: mean)
             }

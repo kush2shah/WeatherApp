@@ -31,7 +31,9 @@ actor GoogleWeatherService: WeatherServiceProtocol {
 
     func fetchWeather(for location: Location) async throws -> SourcedWeatherInfo {
         guard isAvailable else {
+            #if DEBUG
             print("[Google Weather] API key not configured")
+            #endif
             throw APIError.unauthorized
         }
 

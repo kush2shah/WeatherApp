@@ -79,7 +79,7 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
     }
 
     private func convertCurrentWeather(_ response: OWMCurrentResponse) -> CurrentWeather {
-        let weatherInfo = response.weather.first!
+        let weatherInfo = response.weather.first ?? OWMWeather(id: 800, main: "Clear", description: "clear sky", icon: "01d")
 
         return CurrentWeather(
             temperature: response.main.temp,
@@ -99,7 +99,7 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
     }
 
     private func convertHourlyForecast(_ item: OWMForecastItem) -> HourlyForecast {
-        let weatherInfo = item.weather.first!
+        let weatherInfo = item.weather.first ?? OWMWeather(id: 800, main: "Clear", description: "clear sky", icon: "01d")
 
         return HourlyForecast(
             timestamp: item.timestamp,
@@ -135,8 +135,9 @@ actor OpenWeatherMapService: WeatherServiceProtocol {
             let low = temps.min() ?? 0
 
             // Use midday forecast for condition
+            guard !dayItems.isEmpty else { return nil }
             let middayItem = dayItems[dayItems.count / 2]
-            let weatherInfo = middayItem.weather.first!
+            let weatherInfo = middayItem.weather.first ?? OWMWeather(id: 800, main: "Clear", description: "clear sky", icon: "01d")
 
             // Average precipitation chance
             let avgPrecip = dayItems.map { $0.pop }.reduce(0, +) / Double(dayItems.count)

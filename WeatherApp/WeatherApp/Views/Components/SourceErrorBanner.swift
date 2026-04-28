@@ -42,6 +42,7 @@ struct SourceErrorBanner: View {
                                 .foregroundStyle(.blue)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Retry \(source.shortName)")
                     }
                     .padding(12)
                     .background(

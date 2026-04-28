@@ -32,6 +32,24 @@ struct ForecastComparisonView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 8)
+                } else if let errorMessage = viewModel.analysisError {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.orange)
+                        Text("Unable to compare forecasts")
+                            .font(.headline)
+                        Text(errorMessage)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Button("Try Again") {
+                            viewModel.analyzeWeatherData(weatherData)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 400)
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: 400)

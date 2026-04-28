@@ -52,16 +52,22 @@ final class WeatherAggregator {
         await withTaskGroup(of: (WeatherSource, SourcedWeatherInfo?, Error?).self) { group in
             for service in services where service.checkAvailability(for: location) {
                 group.addTask {
+                    #if DEBUG
                     print("[\(service.source.rawValue)] Starting fetch for \(location.name)")
+                    #endif
                     do {
                         let weather = try await service.fetchWeather(for: location)
+                        #if DEBUG
                         print("[\(service.source.rawValue)] ✓ Success")
+                        #endif
                         return (service.source, weather, nil)
                     } catch {
+                        #if DEBUG
                         print("[\(service.source.rawValue)] ✗ Failed: \(error.localizedDescription)")
                         if let apiError = error as? APIError {
                             print("[\(service.source.rawValue)]   Error type: \(apiError)")
                         }
+                        #endif
                         return (service.source, nil, error)
                     }
                 }
@@ -72,15 +78,19 @@ final class WeatherAggregator {
                     results[source] = weather
                 } else if let error = error {
                     errors[source] = error.localizedDescription
+                    #if DEBUG
                     print("[\(source.rawValue)] Skipping due to error: \(error)")
+                    #endif
                 }
             }
         }
 
+        #if DEBUG
         print("Fetch complete. Successful sources: \(results.keys.map { $0.rawValue }.joined(separator: ", "))")
         if !errors.isEmpty {
             print("Failed sources: \(errors.keys.map { $0.rawValue }.joined(separator: ", "))")
         }
+        #endif
         return (sources: results, errors: errors)
     }
 

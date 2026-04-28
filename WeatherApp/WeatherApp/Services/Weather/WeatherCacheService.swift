@@ -44,7 +44,9 @@ final class WeatherCacheService: CachingServiceProtocol {
 
             return weather
         } catch {
+            #if DEBUG
             print("Failed to fetch cached weather: \(error)")
+            #endif
             return nil
         }
     }
@@ -64,7 +66,9 @@ final class WeatherCacheService: CachingServiceProtocol {
                 modelContext.delete(cached)
             }
         } catch {
+            #if DEBUG
             print("Failed to dedupe cached weather: \(error)")
+            #endif
         }
 
         let cached = CachedWeather(
@@ -79,7 +83,9 @@ final class WeatherCacheService: CachingServiceProtocol {
         do {
             try modelContext.save()
         } catch {
+            #if DEBUG
             print("Failed to cache weather: \(error)")
+            #endif
         }
     }
 
@@ -99,7 +105,9 @@ final class WeatherCacheService: CachingServiceProtocol {
             }
             try modelContext.save()
         } catch {
+            #if DEBUG
             print("Failed to clear expired cache: \(error)")
+            #endif
         }
     }
 
@@ -114,7 +122,9 @@ final class WeatherCacheService: CachingServiceProtocol {
             }
             try modelContext.save()
         } catch {
+            #if DEBUG
             print("Failed to clear all cache: \(error)")
+            #endif
         }
     }
 }

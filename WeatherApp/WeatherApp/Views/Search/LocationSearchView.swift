@@ -17,6 +17,7 @@ struct LocationSearchView: View {
     @State private var resolvedCurrentLocation: Location?
     @State private var showLocationDeniedAlert = false
     @State private var pendingLocationSelection = false
+    @State private var locationError: String?
     @Environment(\.dismiss) private var dismiss
     let onLocationSelected: (Location) -> Void
 
@@ -61,6 +62,14 @@ struct LocationSearchView: View {
                         dismiss()
                     }
                 }
+            }
+            .alert("Location Unavailable", isPresented: Binding(
+                get: { locationError != nil },
+                set: { if !$0 { locationError = nil } }
+            )) {
+                Button("OK", role: .cancel) { locationError = nil }
+            } message: {
+                Text(locationError ?? "")
             }
             .alert("Location Access Denied", isPresented: $showLocationDeniedAlert) {
                 Button("Open Settings") {
@@ -262,9 +271,9 @@ struct LocationSearchView: View {
                 }
             }
         } catch {
-            // Silently fail - user can still tap to retry
             await MainActor.run {
                 pendingLocationSelection = false
+                locationError = "Couldn't determine your location. Check your connection and try again."
             }
         }
     }
