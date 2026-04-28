@@ -16,6 +16,7 @@ final class SavedLocation {
     var latitude: Double
     var longitude: Double
     var country: String?
+    var isoCountryCode: String?
     var administrativeArea: String?
     var locality: String?
     var isCurrentLocation: Bool
@@ -28,6 +29,7 @@ final class SavedLocation {
         latitude: Double,
         longitude: Double,
         country: String? = nil,
+        isoCountryCode: String? = nil,
         administrativeArea: String? = nil,
         locality: String? = nil,
         isCurrentLocation: Bool = false,
@@ -39,6 +41,7 @@ final class SavedLocation {
         self.latitude = latitude
         self.longitude = longitude
         self.country = country
+        self.isoCountryCode = isoCountryCode
         self.administrativeArea = administrativeArea
         self.locality = locality
         self.isCurrentLocation = isCurrentLocation
@@ -53,6 +56,7 @@ final class SavedLocation {
             name: name,
             coordinate: Coordinate(latitude: latitude, longitude: longitude),
             country: country,
+            isoCountryCode: isoCountryCode,
             administrativeArea: administrativeArea,
             locality: locality
         )
@@ -66,6 +70,7 @@ final class SavedLocation {
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude,
             country: location.country,
+            isoCountryCode: location.isoCountryCode,
             administrativeArea: location.administrativeArea,
             locality: location.locality,
             order: order

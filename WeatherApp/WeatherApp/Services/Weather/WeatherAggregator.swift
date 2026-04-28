@@ -77,6 +77,8 @@ final class WeatherAggregator {
                 if let weather = weather {
                     results[source] = weather
                 } else if let error = error {
+                    // serviceUnavailable means "no coverage here" — skip silently
+                    if case APIError.serviceUnavailable = error { continue }
                     errors[source] = error.localizedDescription
                     #if DEBUG
                     print("[\(source.rawValue)] Skipping due to error: \(error)")

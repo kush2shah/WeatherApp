@@ -32,8 +32,15 @@ actor NOAAWeatherService: WeatherServiceProtocol {
         let lon = location.coordinate.longitude
 
         // Step 1: Get forecast URLs from points endpoint
+        // NOAA returns 404 for coordinates outside their grid (offshore, border areas, etc.)
+        // Treat that as serviceUnavailable so it's silently skipped rather than shown as an error
         let pointsURL = "https://api.weather.gov/points/\(lat),\(lon)"
-        let pointsResponse: NOAAPointsResponse = try await networkClient.fetch(url: pointsURL)
+        let pointsResponse: NOAAPointsResponse
+        do {
+            pointsResponse = try await networkClient.fetch(url: pointsURL)
+        } catch APIError.httpError(statusCode: 404, _) {
+            throw APIError.serviceUnavailable
+        }
 
         // Step 2: Fetch daily forecast
         async let forecastResponse: NOAAForecastResponse = networkClient.fetch(
