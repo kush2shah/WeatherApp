@@ -8,13 +8,14 @@
 import SwiftUI
 import SwiftData
 import CoreLocation
+import UIKit
 
 /// Launch screen with saved locations and expandable search
 struct LaunchView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \SavedLocation.createdAt, order: .reverse) private var savedLocations: [SavedLocation]
     @State private var locationManager = LocationManager()
-    @State private var isSearchExpanded = false
+    @State private var showSearch = false
     @State private var currentLocationWeather: SourcedWeatherInfo?
     @State private var currentLocation: Location?
     @State private var isLoadingCurrentWeather = false
@@ -26,41 +27,36 @@ struct LaunchView: View {
     private let weatherAggregator = WeatherAggregator()
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Search bar
-            ExpandableSearchBar(
-                isExpanded: $isSearchExpanded,
-                modelContext: modelContext,
-                onLocationSelected: onLocationSelected
-            )
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .zIndex(1)
-
-            if !isSearchExpanded {
-                mainContent
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+        mainContent
+            .safeAreaInset(edge: .bottom) {
+                floatingSearchPill
             }
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isSearchExpanded)
-        .onAppear {
-            setupLocationManager()
-            fetchWeatherForSavedLocations()
-        }
-        .onChange(of: locationManager.currentLocation) { _, newLocation in
-            guard let clLocation = newLocation else { return }
-            Task {
-                await handleCurrentLocationUpdate(clLocation)
+            .sheet(isPresented: $showSearch) {
+                LocationSearchView(
+                    modelContext: modelContext,
+                    onLocationSelected: onLocationSelected
+                )
+                .presentationBackground(.ultraThinMaterial)
+                .presentationDragIndicator(.visible)
             }
-        }
-        .onChange(of: locationManager.authorizationStatus) { _, newStatus in
-            if newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways {
-                locationManager.requestLocation()
+            .onAppear {
+                setupLocationManager()
+                fetchWeatherForSavedLocations()
             }
-        }
-        .onChange(of: savedLocations.count) { _, _ in
-            fetchWeatherForSavedLocations()
-        }
+            .onChange(of: locationManager.currentLocation) { _, newLocation in
+                guard let clLocation = newLocation else { return }
+                Task {
+                    await handleCurrentLocationUpdate(clLocation)
+                }
+            }
+            .onChange(of: locationManager.authorizationStatus) { _, newStatus in
+                if newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways {
+                    locationManager.requestLocation()
+                }
+            }
+            .onChange(of: savedLocations.count) { _, _ in
+                fetchWeatherForSavedLocations()
+            }
     }
 
     // MARK: - Main Content
@@ -101,6 +97,32 @@ struct LaunchView: View {
         }
     }
 
+    // MARK: - Floating Search Pill
+
+    private var floatingSearchPill: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showSearch = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "magnifyingglass")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                Text("Search for a city...")
+                    .font(.system(.body, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .glassEffect(cornerRadius: 28)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 8)
+        .accessibilityLabel("Search for a city")
+    }
+
     // MARK: - Welcome Prompt
 
     private var welcomePrompt: some View {
@@ -123,9 +145,7 @@ struct LaunchView: View {
             }
 
             Button {
-                withAnimation {
-                    isSearchExpanded = true
-                }
+                showSearch = true
             } label: {
                 Label("Search Location", systemImage: "magnifyingglass")
                     .font(.system(.headline, design: .rounded))

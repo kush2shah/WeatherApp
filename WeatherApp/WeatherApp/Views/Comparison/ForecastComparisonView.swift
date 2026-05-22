@@ -24,7 +24,7 @@ struct ForecastComparisonView: View {
                         AgreementScoreHeader(data: data)
                         MetricSelectorRow(selected: $viewModel.selectedMetric)
                         UncertaintyChartSection(data: data, metric: viewModel.selectedMetric)
-                        SourceSnapshotRow(weatherData: weatherData, outliers: data.outliers)
+                        SourceSnapshotRow(weatherData: weatherData)
                         if !data.insights.isEmpty {
                             InsightSection(insights: data.insights)
                         }
@@ -200,11 +200,6 @@ private struct UncertaintyChartSection: View {
 
 private struct SourceSnapshotRow: View {
     let weatherData: WeatherData
-    let outliers: [SourceOutlier]
-
-    private var outlierSources: Set<WeatherSource> {
-        Set(outliers.map { $0.source })
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -213,11 +208,7 @@ private struct SourceSnapshotRow: View {
                 HStack(spacing: 12) {
                     ForEach(weatherData.availableSources, id: \.self) { source in
                         if let weather = weatherData.sources[source] {
-                            SourceNowCard(
-                                source: source,
-                                weather: weather,
-                                isOutlier: outlierSources.contains(source)
-                            )
+                            SourceNowCard(source: source, weather: weather)
                         }
                     }
                 }
@@ -231,7 +222,6 @@ private struct SourceSnapshotRow: View {
 private struct SourceNowCard: View {
     let source: WeatherSource
     let weather: SourcedWeatherInfo
-    let isOutlier: Bool
 
     private var sourceColor: Color {
         switch source {
@@ -267,26 +257,14 @@ private struct SourceNowCard: View {
 
             Spacer()
 
-            // Source name + outlier badge
-            HStack(spacing: 4) {
-                Text(source.shortName)
-                    .font(.system(.caption2, design: .rounded).weight(.semibold))
-                    .foregroundStyle(sourceColor)
-                if isOutlier {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-            }
-            .padding(.top, 8)
+            Text(source.shortName)
+                .font(.system(.caption2, design: .rounded).weight(.semibold))
+                .foregroundStyle(sourceColor)
+                .padding(.top, 8)
         }
         .padding(14)
         .frame(width: 130, height: 130)
         .glassEffect(in: .rect(cornerRadius: 20))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(isOutlier ? Color.orange.opacity(0.4) : Color.clear, lineWidth: 1.5)
-        )
     }
 }
 

@@ -9,78 +9,48 @@
 import SwiftUI
 import Charts
 
-/// Uncertainty band chart: shaded min-max area + bold consensus line.
-/// Replaces the spaghetti multi-line chart with a cleaner visualization
-/// that emphasizes WHERE sources disagree, not who says what.
+/// Per-source line chart showing what each weather service predicts over 24h.
 struct ComparisonChartView: View {
     let data: ComparisonData
     let metric: ComparisonMetric
 
-    private var points: [UncertaintyPoint] {
-        data.uncertaintyBands[metric] ?? []
-    }
-
-    private var bandColor: Color {
+    private var sourcePoints: [(source: WeatherSource, points: [DataPoint])] {
+        let dict: [WeatherSource: [DataPoint]]
         switch metric {
-        case .temperature:   return .orange
-        case .precipitation: return .blue
-        case .wind:          return .teal
-        case .humidity:      return .indigo
+        case .temperature:   dict = data.temperatures
+        case .precipitation: dict = data.precipitation
+        case .wind:          dict = data.wind
+        case .humidity:      dict = data.humidity
         }
+        return dict
+            .map { (source: $0.key, points: $0.value.sorted { $0.timestamp < $1.timestamp }) }
+            .filter { !$0.points.isEmpty }
+            .sorted { $0.source.displayName < $1.source.displayName }
     }
 
     var body: some View {
-        if points.isEmpty {
+        if sourcePoints.isEmpty {
             emptyState
         } else {
-            chart
+            VStack(alignment: .leading, spacing: 10) {
+                chart
+                legend
+            }
         }
     }
 
     private var chart: some View {
         Chart {
-            // Shaded band: full spread across all sources
-            ForEach(points) { point in
-                AreaMark(
-                    x: .value("Time", point.timestamp),
-                    yStart: .value("Min", point.min),
-                    yEnd: .value("Max", point.max)
-                )
-                .foregroundStyle(bandColor.opacity(0.18))
-                .interpolationMethod(.catmullRom)
-            }
-
-            // Dashed lower bound
-            ForEach(points) { point in
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("Min", point.min)
-                )
-                .foregroundStyle(bandColor.opacity(0.4))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                .interpolationMethod(.catmullRom)
-            }
-
-            // Dashed upper bound
-            ForEach(points) { point in
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("Max", point.max)
-                )
-                .foregroundStyle(bandColor.opacity(0.4))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                .interpolationMethod(.catmullRom)
-            }
-
-            // Bold consensus line (mean of all sources)
-            ForEach(points) { point in
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("Consensus", point.mean)
-                )
-                .foregroundStyle(bandColor)
-                .lineStyle(StrokeStyle(lineWidth: 2.5))
-                .interpolationMethod(.catmullRom)
+            ForEach(sourcePoints, id: \.source) { entry in
+                ForEach(entry.points) { point in
+                    LineMark(
+                        x: .value("Time", point.timestamp),
+                        y: .value(metric.rawValue, point.value)
+                    )
+                    .foregroundStyle(entry.source.chartColor)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                    .interpolationMethod(.catmullRom)
+                }
             }
         }
         .chartXAxis {
@@ -106,7 +76,22 @@ struct ComparisonChartView: View {
             }
         }
         .chartLegend(.hidden)
-        .frame(height: 200)
+        .frame(height: 180)
+    }
+
+    private var legend: some View {
+        HStack(spacing: 14) {
+            ForEach(sourcePoints, id: \.source) { entry in
+                HStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(entry.source.chartColor)
+                        .frame(width: 16, height: 3)
+                    Text(entry.source.shortName)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 
     private var emptyState: some View {
@@ -119,6 +104,18 @@ struct ComparisonChartView: View {
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 200)
+        .frame(height: 180)
+    }
+}
+
+private extension WeatherSource {
+    var chartColor: Color {
+        switch self {
+        case .weatherKit:     return .blue
+        case .googleWeather:  return .red
+        case .noaa:           return .green
+        case .openWeatherMap: return .orange
+        case .tomorrowIO:     return .purple
+        }
     }
 }

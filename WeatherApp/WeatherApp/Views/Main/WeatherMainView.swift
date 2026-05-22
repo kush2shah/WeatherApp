@@ -76,17 +76,16 @@ struct WeatherMainView: View {
                         Button {
                             showComparison = true
                         } label: {
-                            HStack {
+                            HStack(spacing: 6) {
                                 Image(systemName: "chart.xyaxis.line")
-                                Text("Compare Sources")
+                                Text("Compare \(weatherData.availableSources.count) Sources")
                             }
-                            .font(.system(.headline, design: .rounded))
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .glassEffect(in: .rect(cornerRadius: 16))
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .glassEffect(in: .capsule)
                         }
-                        .padding(.horizontal, 24)
                     }
 
                     // Attribution
