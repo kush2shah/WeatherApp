@@ -233,15 +233,7 @@ private struct SourceNowCard: View {
     let weather: SourcedWeatherInfo
     let isOutlier: Bool
 
-    private var sourceColor: Color {
-        switch source {
-        case .weatherKit:    return .blue
-        case .googleWeather: return .red
-        case .noaa:          return .green
-        case .openWeatherMap: return .orange
-        case .tomorrowIO:    return .purple
-        }
-    }
+    private var sourceColor: Color { source.color }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -359,10 +351,8 @@ private struct SourceDetailSection: View {
 
             // Attributions
             ForEach(weatherData.availableSources, id: \.self) { source in
-                if let weather = weatherData.sources[source] {
-                    Text(weather.attribution)
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(.tertiary)
+                if weatherData.sources[source] != nil {
+                    WeatherAttributionView(source: source)
                 }
             }
         }
@@ -374,15 +364,7 @@ private struct ImprovedSourceDetailRow: View {
     let source: WeatherSource
     let weather: SourcedWeatherInfo
 
-    private var sourceColor: Color {
-        switch source {
-        case .weatherKit:    return .blue
-        case .googleWeather: return .red
-        case .noaa:          return .green
-        case .openWeatherMap: return .orange
-        case .tomorrowIO:    return .purple
-        }
-    }
+    private var sourceColor: Color { source.color }
 
     var body: some View {
         HStack(spacing: 12) {

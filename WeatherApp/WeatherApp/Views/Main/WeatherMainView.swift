@@ -90,9 +90,7 @@ struct WeatherMainView: View {
                     }
 
                     // Attribution
-                    Text(weather.attribution)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    WeatherAttributionView(source: selectedSource)
                         .padding(.bottom)
                 }
             }

@@ -8,8 +8,6 @@
 	<string>$(CLOUD_RUN_PROXY_URL)</string>
 	<key>GCP_API_KEY</key>
 	<string>$(GCP_API_KEY)</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>WeatherApp uses your location to show current conditions and forecasts for where you are.</string>
 	<key>OWM_API_KEY</key>
 	<string>$(OWM_API_KEY)</string>
 	<key>TOMORROW_API_KEY</key>

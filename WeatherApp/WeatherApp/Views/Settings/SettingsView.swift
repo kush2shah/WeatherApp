@@ -79,8 +79,25 @@ struct SettingsView: View {
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
                             .foregroundStyle(.secondary)
                     }
+
+                    Link(destination: WeatherAttribution.appleLegalURL) {
+                        HStack {
+                            Label {
+                                Text("Weather Data Sources")
+                            } icon: {
+                                Image(systemName: "apple.logo")
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.footnote)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .tint(.primary)
                 } header: {
                     Label("About", systemImage: "info.circle")
+                } footer: {
+                    Text("Weather data is provided by Apple Weather and additional sources. Tap above to view the full list of data providers.")
                 }
             }
             .navigationTitle("Settings")
