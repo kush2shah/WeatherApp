@@ -256,6 +256,21 @@ extension Color {
     }
 }
 
+// MARK: - Weather Source Palette
+
+extension WeatherSource {
+    /// Brand-accent color used consistently across comparison cards, detail rows, and charts.
+    var color: Color {
+        switch self {
+        case .weatherKit:     return .blue
+        case .googleWeather:  return .red
+        case .noaa:           return .green
+        case .openWeatherMap: return .orange
+        case .tomorrowIO:     return .purple
+        }
+    }
+}
+
 // MARK: - Color Components Helper
 
 extension Color {
