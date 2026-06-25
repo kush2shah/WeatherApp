@@ -67,3 +67,6 @@ Config.xcconfig
 
 # Git worktrees
 .worktrees/
+
+# macOS
+.DS_Store
