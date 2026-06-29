@@ -96,9 +96,21 @@ struct LaunchView: View {
                 } else if !locationManager.isAuthorized {
                     emptyStateView
                 }
+
+                // Apple Weather attribution (primary source for displayed weather)
+                if showsWeatherData {
+                    AppleWeatherAttributionFooter()
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                }
             }
             .padding(.bottom, 32)
         }
+    }
+
+    /// Whether any Apple Weather data is currently shown on the launch screen.
+    private var showsWeatherData: Bool {
+        currentLocationWeather != nil || !savedLocationWeather.isEmpty
     }
 
     // MARK: - Welcome Prompt
@@ -111,7 +123,7 @@ struct LaunchView: View {
                 .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
 
             VStack(spacing: 8) {
-                Text("Welcome to WeatherApp")
+                Text("Welcome to Whichever Weather")
                     .font(.system(.title2, design: .rounded))
                     .fontWeight(.bold)
                     .foregroundStyle(.primary)

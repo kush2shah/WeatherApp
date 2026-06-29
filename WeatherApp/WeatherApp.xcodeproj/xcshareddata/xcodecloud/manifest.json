@@ -1,0 +1,9 @@
+{
+  "id" : "40371af2-c4d9-4c75-b26c-5b7715603a8e",
+  "targets" : [
+    {
+      "id" : "D09486BF-7723-42FE-A138-DF9B3AFEB966",
+      "name" : "WeatherApp"
+    }
+  ]
+}

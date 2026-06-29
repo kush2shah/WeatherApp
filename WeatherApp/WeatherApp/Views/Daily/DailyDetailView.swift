@@ -157,10 +157,24 @@ private struct DayDetailPage: View {
                 case .compare:
                     comparisonSection
                 }
+
+                // Source attribution for the displayed data
+                attributionFooter
             }
             .padding(.vertical)
         }
 
+    }
+
+    @ViewBuilder
+    private var attributionFooter: some View {
+        if case .source(let source) = selection {
+            WeatherAttributionView(source: source)
+                .padding(.top, 4)
+        } else if availableSources.contains(.weatherKit) {
+            AppleWeatherAttributionFooter()
+                .padding(.top, 4)
+        }
     }
 
     // MARK: - Header

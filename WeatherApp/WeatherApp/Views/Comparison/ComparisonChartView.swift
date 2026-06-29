@@ -9,28 +9,29 @@
 import SwiftUI
 import Charts
 
-/// Uncertainty band chart: shaded min-max area + bold consensus line.
-/// Replaces the spaghetti multi-line chart with a cleaner visualization
-/// that emphasizes WHERE sources disagree, not who says what.
+/// Per-source forecast chart: one line per weather source, colored with the
+/// shared source palette so the chart matches the snapshot/detail cards. A
+/// subtle neutral band behind the lines shows the spread across sources.
 struct ComparisonChartView: View {
     let data: ComparisonData
     let metric: ComparisonMetric
 
+    /// min/max spread band across all sources (drawn neutral, just for context)
     private var points: [UncertaintyPoint] {
         data.uncertaintyBands[metric] ?? []
     }
 
-    private var bandColor: Color {
-        switch metric {
-        case .temperature:   return .orange
-        case .precipitation: return .blue
-        case .wind:          return .teal
-        case .humidity:      return .indigo
-        }
+    private var seriesBySource: [WeatherSource: [DataPoint]] {
+        data.series(for: metric)
+    }
+
+    /// Sources that actually have data for this metric, in a stable order.
+    private var sourcesInOrder: [WeatherSource] {
+        WeatherSource.allCases.filter { !(seriesBySource[$0]?.isEmpty ?? true) }
     }
 
     var body: some View {
-        if points.isEmpty {
+        if sourcesInOrder.isEmpty {
             emptyState
         } else {
             chart
@@ -39,48 +40,29 @@ struct ComparisonChartView: View {
 
     private var chart: some View {
         Chart {
-            // Shaded band: full spread across all sources
+            // Neutral spread band behind the lines for context
             ForEach(points) { point in
                 AreaMark(
                     x: .value("Time", point.timestamp),
                     yStart: .value("Min", point.min),
                     yEnd: .value("Max", point.max)
                 )
-                .foregroundStyle(bandColor.opacity(0.18))
+                .foregroundStyle(.gray.opacity(0.12))
                 .interpolationMethod(.catmullRom)
             }
 
-            // Dashed lower bound
-            ForEach(points) { point in
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("Min", point.min)
-                )
-                .foregroundStyle(bandColor.opacity(0.4))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                .interpolationMethod(.catmullRom)
-            }
-
-            // Dashed upper bound
-            ForEach(points) { point in
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("Max", point.max)
-                )
-                .foregroundStyle(bandColor.opacity(0.4))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                .interpolationMethod(.catmullRom)
-            }
-
-            // Bold consensus line (mean of all sources)
-            ForEach(points) { point in
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("Consensus", point.mean)
-                )
-                .foregroundStyle(bandColor)
-                .lineStyle(StrokeStyle(lineWidth: 2.5))
-                .interpolationMethod(.catmullRom)
+            // One line per source, colored by the shared source palette
+            ForEach(sourcesInOrder, id: \.self) { source in
+                ForEach(seriesBySource[source] ?? []) { point in
+                    LineMark(
+                        x: .value("Time", point.timestamp),
+                        y: .value(metric.rawValue, point.value),
+                        series: .value("Source", source.shortName)
+                    )
+                    .foregroundStyle(source.color)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                    .interpolationMethod(.catmullRom)
+                }
             }
         }
         .chartXAxis {

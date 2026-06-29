@@ -79,6 +79,16 @@ struct ComparisonData {
     let temperatureVariance: Double
     let precipitationDifference: Double
     let windVariance: Double
+
+    /// Per-source time-series for a given metric
+    func series(for metric: ComparisonMetric) -> [WeatherSource: [DataPoint]] {
+        switch metric {
+        case .temperature:   return temperatures
+        case .precipitation: return precipitation
+        case .wind:          return wind
+        case .humidity:      return humidity
+        }
+    }
 }
 
 // MARK: - Metric Type
